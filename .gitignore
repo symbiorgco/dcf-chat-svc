@@ -1,0 +1,7 @@
+node_modules
+src/config/default.json
+config/default.json
+.cache
+.env*
+*.0
+dist
