@@ -1,9 +1,11 @@
+import "dotenv/config";
+
 import { WebSocketServer, WebSocket } from "ws";
 import { ChatDataMessage, ChatDataRequestMessage } from "./utils/types";
 import { logger } from "./logger";
 import http from "http";
 import { verifyJwt } from "./authentication";
-import { verifyMessage } from "./chat";
+import { addChatMessage, verifyMessage } from "./chat";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
@@ -35,7 +37,9 @@ server.on("upgrade", async function upgrade(request, socket, head) {
   }
 });
 
-export const wssViewers = new WebSocketServer({ port: 8201 });
+export const wssViewers = new WebSocketServer({
+  port: Number.parseInt(process.env.PORT_WS_VIEW),
+});
 export let viewers = 5;
 
 export const broadcastMessage = (msg: Buffer) => {
@@ -71,7 +75,7 @@ wssAuthenticated.on("connection", function connection(ws, request, wallet) {
               username: "USERNAME",
               timestamp: Date.now(),
             };
-
+            addChatMessage(broadcastMsg);
             broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
           }
         }
@@ -90,7 +94,7 @@ const updateViewers = () => {
 };
 
 export const initWebsockets = () => {
-  server.listen(8200);
+  server.listen(Number.parseInt(process.env.PORT_WS_AUTH));
 
   // Stats Timers
   setInterval(() => {

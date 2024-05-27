@@ -5,3 +5,4 @@ config/default.json
 .env*
 *.0
 dist
+app.log
