@@ -1,14 +1,26 @@
 import { ChatDataMessage } from "./utils/types";
 import Filter from "bad-words";
 import badWords from "./bad-words.json";
+import fs from "fs";
+const HISTORY_FILE = "/usr/app/chat-history.json";
+
+const allChatMessages = JSON.parse(
+  fs.readFileSync(HISTORY_FILE, "utf-8")
+) as ChatDataMessage[];
+
+const stream = fs.createWriteStream(HISTORY_FILE, { flags: "a" });
+
+const MAX_MESSAGES_HISTORY = 25;
+
+export let recentChatMessages: ChatDataMessage[] = allChatMessages.slice(
+  -MAX_MESSAGES_HISTORY
+);
 
 export interface VerifiedMessage {
   msg: string;
   error: boolean;
   errorMessage: string;
 }
-
-export const allChatMessages: ChatDataMessage[] = [];
 
 const filter = new Filter();
 filter.addWords(...badWords.words);
@@ -36,8 +48,11 @@ export const verifyMessage = (msg: string): VerifiedMessage => {
 };
 
 export const addChatMessage = (msg: ChatDataMessage) => {
-  if (allChatMessages.length > 20) {
-    allChatMessages.shift();
+  if (recentChatMessages.length >= MAX_MESSAGES_HISTORY) {
+    recentChatMessages.shift();
   }
-  allChatMessages.push(msg);
+  recentChatMessages.push(msg);
+
+  //Write to file
+  stream.write(JSON.stringify(msg), "utf-8");
 };

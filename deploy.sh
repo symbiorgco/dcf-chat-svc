@@ -10,6 +10,7 @@ docker run \
     --env-file .env.dev \
     --restart=on-failure \
     -v /home/ec2-user/chat.log:/usr/app/app.log \
+    -v /home/ec2-user/chat-history.json:/usr/app/chat-history.json \
     --name chat-app \
     --network host \
     docker.io/library/chat-app
