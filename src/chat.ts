@@ -1,7 +1,7 @@
 import { ChatDataMessage } from "./utils/types";
 import Filter from "bad-words";
 import badWords from "./bad-words.json";
-import fs from "fs";
+/*import fs from "fs";
 const HISTORY_FILE = "/usr/app/chat-history.json";
 
 const allChatMessages = JSON.parse(
@@ -10,11 +10,13 @@ const allChatMessages = JSON.parse(
 
 const stream = fs.createWriteStream(HISTORY_FILE, { flags: "a" });
 
-const MAX_MESSAGES_HISTORY = 25;
-
 export let recentChatMessages: ChatDataMessage[] = allChatMessages.slice(
   -MAX_MESSAGES_HISTORY
-);
+);*/
+
+const MAX_MESSAGES_HISTORY = 25;
+
+export let recentChatMessages: ChatDataMessage[] = [];
 
 export interface VerifiedMessage {
   msg: string;
@@ -54,5 +56,5 @@ export const addChatMessage = (msg: ChatDataMessage) => {
   recentChatMessages.push(msg);
 
   //Write to file
-  stream.write(JSON.stringify(msg), "utf-8");
+  //stream.write(JSON.stringify(msg), "utf-8");
 };
