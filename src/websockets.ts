@@ -1,7 +1,11 @@
 import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
-import { ChatDataMessage, ChatDataRequestMessage } from "./utils/types";
+import {
+  ChatDataMessage,
+  ChatDataRequestMessage,
+  ChatProfile,
+} from "./utils/types";
 import { logger } from "./logger";
 import http from "http";
 import { verifyJwt } from "./authentication";
@@ -11,7 +15,7 @@ const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
 
 server.on("upgrade", async function upgrade(request, socket, head) {
-  let verifiedWalletId: string = undefined;
+  let verifiedWalletId: ChatProfile = undefined;
 
   try {
     const headers = request.headers;
@@ -58,8 +62,10 @@ export const broadcastMessage = (msg: Buffer) => {
 
 wssAuthenticated.on("connection", function connection(ws, request, wallet) {
   try {
-    const walletId = wallet as string;
-    logger.info(`[WS] Player connected ${walletId}`);
+    const chatProfile = wallet as ChatProfile;
+    logger.info(
+      `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname}`
+    );
     ws.on("message", function message(data) {
       try {
         const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
@@ -72,7 +78,7 @@ wssAuthenticated.on("connection", function connection(ws, request, wallet) {
             const broadcastMsg: ChatDataMessage = {
               type: "MSG",
               message: verifiedMessage.msg,
-              username: "USERNAME",
+              username: chatProfile.nickname,
               timestamp: Date.now(),
             };
             addChatMessage(broadcastMsg);

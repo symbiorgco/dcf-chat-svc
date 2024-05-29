@@ -9,3 +9,15 @@ export interface ChatDataMessage {
   username: string;
   timestamp: number;
 }
+
+export interface ChatProfile {
+  walletId: string;
+  profileImageUrl: string;
+  nickname: string;
+}
+
+export interface VerifiedMessage {
+  msg: string;
+  error: boolean;
+  errorMessage: string;
+}

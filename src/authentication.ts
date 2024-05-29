@@ -1,7 +1,12 @@
+import "dotenv/config";
+
 import NodeCache from "node-cache";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import { logger } from "./logger";
+import { ChatProfile } from "./utils/types";
+
+const DEALER_API = process.env.DEALER_API as string;
 
 const authenticatedCache = new NodeCache({
   stdTTL: 40000,
@@ -10,29 +15,30 @@ const authenticatedCache = new NodeCache({
 
 export const verifyJwt = async (
   authToken: string
-): Promise<string | undefined> => {
+): Promise<ChatProfile | undefined> => {
   try {
     const decoded = jwt.decode(authToken);
     const walletId = decoded["cognito:username"] as string;
 
-    if (authenticatedCache.get(authToken)) {
-      return walletId;
+    const fromCache = authenticatedCache.get(authToken) as ChatProfile;
+    if (fromCache) {
+      return fromCache;
     } else {
       return await axios
-        .get(
-          "https://dev-api.dealer.degencoinflip.com/v1/authentication-check",
-          {
-            headers: {
-              Authorization: authToken,
-              "Content-Type": "application/json",
-            },
-          }
-        )
+        .get(`${DEALER_API}/player-check`, {
+          headers: {
+            Authorization: authToken,
+            "Content-Type": "application/json",
+          },
+        })
         .then((response) => {
           if (response.data.payload.isSuccessful === true) {
-            logger.info(`[JWT] New user authenticated ${walletId}`);
-            authenticatedCache.set(authToken, walletId);
-            return walletId;
+            const newChatProfile = response.data.payload.profile as ChatProfile;
+            logger.info(
+              `[JWT] New user authenticated ${newChatProfile.walletId} Nickname: ${newChatProfile.nickname}`
+            );
+            authenticatedCache.set(authToken, newChatProfile);
+            return newChatProfile;
           } else {
             logger.info(`[JWT] user connection failure ${walletId}`);
             return undefined;
