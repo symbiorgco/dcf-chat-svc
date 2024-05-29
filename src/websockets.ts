@@ -10,6 +10,7 @@ import { logger } from "./logger";
 import http from "http";
 import { verifyJwt } from "./authentication";
 import { addChatMessage, verifyMessage } from "./chat";
+import NodeCache from "node-cache";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
@@ -60,6 +61,11 @@ export const broadcastMessage = (msg: Buffer) => {
   });
 };
 
+const intervalCache = new NodeCache({
+  stdTTL: 1,
+  checkperiod: 10,
+});
+
 wssAuthenticated.on("connection", function connection(ws, request, wallet) {
   try {
     const chatProfile = wallet as ChatProfile;
@@ -69,7 +75,8 @@ wssAuthenticated.on("connection", function connection(ws, request, wallet) {
     ws.on("message", function message(data) {
       try {
         const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
-        if (msg.type === "MSG") {
+        if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
+          intervalCache.set(chatProfile.walletId, true);
           const verifiedMessage = verifyMessage(msg.message);
           if (verifiedMessage.error) {
             //// REPLY ERROR TO THE USER

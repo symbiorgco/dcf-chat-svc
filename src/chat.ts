@@ -12,7 +12,6 @@ filter.addWords(...badWords.words);
 const MAX_CHARS = 150;
 
 export const verifyMessage = (msg: string): VerifiedMessage => {
-  //// TODO Parse the message
   //Rule 1 Char count
   const msgWordCounted = msg.substring(0, MAX_CHARS);
 
@@ -36,7 +35,4 @@ export const addChatMessage = (msg: ChatDataMessage) => {
     recentChatMessages.shift();
   }
   recentChatMessages.push(msg);
-
-  //Write to file
-  //stream.write(JSON.stringify(msg), "utf-8");
 };
