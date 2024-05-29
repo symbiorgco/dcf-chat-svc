@@ -44,7 +44,7 @@ server.on("upgrade", async function upgrade(request, socket, head) {
 export const wssViewers = new WebSocketServer({
   port: Number.parseInt(process.env.PORT_WS_VIEW),
 });
-export let viewers = 5;
+export let viewers = 0;
 
 export const broadcastMessage = (msg: Buffer) => {
   wssAuthenticated.clients.forEach(async (client) => {
@@ -95,8 +95,18 @@ wssAuthenticated.on("connection", function connection(ws, request, wallet) {
 });
 
 const updateViewers = () => {
-  viewers = wssAuthenticated.clients.size + 7 + wssViewers.clients.size;
+  viewers = wssAuthenticated.clients.size + wssViewers.clients.size;
   logger.info(`[STATS] Total connected clients: ${viewers}`);
+};
+
+const heartbeat = async () => {
+  const broadcastMsg: ChatDataMessage = {
+    type: "PING",
+    message: "",
+    username: "",
+    timestamp: Date.now(),
+  };
+  broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
 };
 
 export const initWebsockets = () => {
@@ -106,4 +116,9 @@ export const initWebsockets = () => {
   setInterval(() => {
     updateViewers();
   }, 30000);
+
+  // Stats Timers
+  setInterval(() => {
+    heartbeat();
+  }, 55000);
 };
