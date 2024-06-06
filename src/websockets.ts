@@ -62,7 +62,7 @@ export const broadcastMessage = (msg: Buffer) => {
 };
 
 const intervalCache = new NodeCache({
-  stdTTL: 1,
+  stdTTL: 1, // 1 message per second
   checkperiod: 10,
 });
 
