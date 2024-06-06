@@ -1,17 +1,21 @@
 ### Create a context
 
+Adapt `.ssh/authorized_keys` on the remote host when working with keys
+
 ```
 docker context create dev-chat-endpoint --docker "host=ssh://ec2-user@*********.compute.amazonaws.com"
 ```
 
-### Certbot on AWS Linux 2023
+### Certbot + NGINX on AWS Linux 2023
 
 ```
 sudo dnf install -y certbot python3-certbot-dns-route53
+sudo dnf install -y nginx
 sudo dnf install -y python3-certbot-apache
 sudo dnf install -y python3-certbot-nginx
-sudo systecmtl daemon-reload
+sudo systemctl daemon-reload
 sudo systemctl enable --now certbot-renew.timer
+sudo systemctl enable --now nginx
 ```
 
 ### NGINX config
@@ -19,74 +23,122 @@ sudo systemctl enable --now certbot-renew.timer
 Increase worker connections!
 
 ```
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log notice;
+pid /run/nginx.pid;
+
+# Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 32000;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    keepalive_timeout   65;
+    types_hash_max_size 4096;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    # Load modular configuration files from the /etc/nginx/conf.d directory.
+    # See http://nginx.org/en/docs/ngx_core_module.html#include
+    # for more information.
+    include /etc/nginx/conf.d/*.conf;
+
     map $http_upgrade $connection_upgrade {
         default upgrade;
         '' close;
     }
 
+    server {
+        listen       80;
+        listen       [::]:80;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        error_page 404 /404.html;
+        location = /404.html {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+        }
+    }
+
     limit_req_zone $binary_remote_addr zone=mylimit:10m rate=10r/s;
     limit_conn_zone $binary_remote_addr zone=myaddr:10m;
 
-    upstream websocket {
-        server 127.0.0.1:8100;
+    upstream chatwebsocket {
+        server 127.0.0.1:8400;
     }
 
-    upstream api {
-        server 127.0.0.1:8200;
+    upstream chatwebsocketviewer {
+        server 127.0.0.1:8401;
     }
 
+    upstream chatapi {
+        server 127.0.0.1:8402;
+    }
 
     server {
-        server_name crash.degenrpc.com;
+        server_name chat-api.degencoinflip.com;
         listen 443 ssl;
         location / {
-            limit_conn myaddr 3;
+            limit_conn myaddr 5;
             limit_req zone=mylimit burst=5;
-            proxy_pass http://websocket;
+            proxy_pass http://chatwebsocket;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
             proxy_set_header Host $host;
         }
 
-        location /api/status {
-                limit_conn myaddr 3;
+        location /api/chat {
+                limit_conn myaddr 5;
                 limit_req zone=mylimit burst=5;
-                proxy_pass http://api;
+                proxy_pass http://chatapi;
         }
 
-        ssl_certificate /etc/letsencrypt/live/crash.degenrpc.com/fullchain.pem; # managed by Certbot
-        ssl_certificate_key /etc/letsencrypt/live/crash.degenrpc.com/privkey.pem; # managed by Certbot
-        include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+        ssl_certificate /etc/letsencrypt/live/chat-api.degencoinflip.com/fullchain.pem; # managed by Certbot
+        ssl_certificate_key /etc/letsencrypt/live/chat-api.degencoinflip.com/privkey.pem; # managed by Certbot
     }
 
     server {
-        server_name crashview.degenrpc.com;
+        server_name chatview-api.degencoinflip.com;
         listen 443 ssl;
         location / {
-            limit_conn myaddr 3;
+            limit_conn myaddr 5;
             limit_req zone=mylimit burst=5;
-            proxy_pass http://websocketviewer;
+            proxy_pass http://chatwebsocketviewer;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
             proxy_set_header Host $host;
         }
 
-        location /api/status {
-                limit_conn myaddr 3;
+        location /api/chat {
+                limit_conn myaddr 5;
                 limit_req zone=mylimit burst=5;
-                proxy_pass http://api;
+                proxy_pass http://chatapi;
         }
 
-        include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-        ssl_certificate /etc/letsencrypt/live/crashview.degenrpc.com/fullchain.pem; # managed by Certbot
-        ssl_certificate_key /etc/letsencrypt/live/crashview.degenrpc.com/privkey.pem; # managed by Certbot
-
+        ssl_certificate /etc/letsencrypt/live/chatview-api.degencoinflip.com/fullchain.pem; # managed by Certbot
+        ssl_certificate_key /etc/letsencrypt/live/chatview-api.degencoinflip.com/privkey.pem; # managed by Certbot
     }
-
+}
 
 ```
 
