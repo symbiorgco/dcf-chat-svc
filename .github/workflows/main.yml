@@ -1,0 +1,81 @@
+name: Chat Service CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # Test:
+  #   # The type of runner that the job will run on
+  #   runs-on: ubuntu-latest
+
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
+
+  #     - name: Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version-file: .nvmrc
+
+  #     - name: Cache dependencies
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: ~/.npm
+  #         key: npm-${{ hashFiles('package-lock.json') }}
+  #         restore-keys: npm-
+
+  #     - name: Install Dependencies
+  #       run: |
+  #         yarn install --frozen-lockfile
+
+  #     - name: Run Test
+  #       run: |
+  #         yarn test:ci
+  Build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Docker Login
+        # You may pin to the exact commit or the version.
+        # uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
+        uses: docker/login-action@v1.14.1
+        with:
+          # Username used to log against the Docker registry
+          username: dcfhermes
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set outputs
+        id: vars
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          echo "::set-output name=branch::$(echo ${GITHUB_HEAD_REF##*/})"
+      - name: Docker Build
+        run: |
+          docker build . --build-arg VERSION=${{ steps.vars.outputs.sha_short }} --file Dockerfile --tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }}
+          docker tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }} dcfhermes/dcf-chat-svc:${{ env.BRANCH_NAME }}
+          docker push dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }}
+          docker push dcfhermes/dcf-chat-svc:${{ env.BRANCH_NAME }}
+      - name: Notify discord
+        uses: th0th/notify-discord@v0.4.1
+        if: ${{ always() }}
+        env:
+          DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/1198054557092155482/7kmVtBiE_-ZjzfmRP1fCjaiqmRGgxrpJlbBa6SrzaD0SHRTj_HGxWaxdxdo9-hqpLcy_
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_JOB_NAME: 'Chat Service Docker Container Build/Publish - ${{ env.BRANCH_NAME }}'
+          GITHUB_JOB_STATUS: ${{ job.status }}
