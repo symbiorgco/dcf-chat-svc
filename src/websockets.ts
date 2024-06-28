@@ -77,23 +77,28 @@ wssAuthenticated.on("connection", function connection(ws, request, wallet) {
         const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
         if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
           intervalCache.set(chatProfile.walletId, true);
-          const verifiedMessage = verifyMessage(msg.message);
-          if (verifiedMessage.error) {
-            //// REPLY ERROR TO THE USER
-            logger.info("Received errored message");
+          if (msg.message.length > 0) {
+            const verifiedMessage = verifyMessage(msg.message);
+            if (verifiedMessage.error) {
+              //// REPLY ERROR TO THE USER
+              logger.info("Received errored message");
+            } else {
+              const broadcastMsg: ChatDataMessage = {
+                type: "MSG",
+                message: verifiedMessage.msg,
+                username: chatProfile.nickname,
+                timestamp: Date.now(),
+              };
+              addChatMessage(broadcastMsg);
+              broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+            }
           } else {
-            const broadcastMsg: ChatDataMessage = {
-              type: "MSG",
-              message: verifiedMessage.msg,
-              username: chatProfile.nickname,
-              timestamp: Date.now(),
-            };
-            addChatMessage(broadcastMsg);
-            broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+            logger.info("Received length 0");
           }
         }
       } catch (err) {
-        console.log("received: %s", data);
+        logger.error("received: %s", data);
+        logger.error(err);
       }
     });
   } catch (err) {
