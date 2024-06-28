@@ -16,10 +16,15 @@ export const verifyMessage = (msg: string): VerifiedMessage => {
   const msgWordCounted = msg.substring(0, MAX_CHARS);
 
   //Rule 2 regex
-  const msgRegex = msgWordCounted.replace(/[^\x20-\x7E]/gi, "?");
+  const msgRegex = msgWordCounted.replace(/[^\x20-\x7E\ud000-\udfff]/gi, "?");
 
   //Rule 3 filter bad words
-  const filteredMessage = filter.clean(msgRegex);
+  let filteredMessage;
+  try {
+    filteredMessage = filter.clean(msgRegex);
+  } catch (err) {
+    filteredMessage = msgRegex;
+  }
 
   const verifiedMessage: VerifiedMessage = {
     msg: filteredMessage,
