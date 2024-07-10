@@ -9,7 +9,7 @@ import { ChatProfile } from "./utils/types";
 const DEALER_API = process.env.DEALER_API as string;
 
 const authenticatedCache = new NodeCache({
-  stdTTL: 40000,
+  stdTTL: 60,
   checkperiod: 3600,
 }); //Remember aprox 12 hours
 
