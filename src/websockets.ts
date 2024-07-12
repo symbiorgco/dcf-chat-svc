@@ -12,6 +12,8 @@ import { verifyJwt } from "./authentication";
 import { addChatMessage, verifyMessage } from "./chat";
 import NodeCache from "node-cache";
 
+import admins from "./admins.json";
+
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
 
@@ -66,6 +68,14 @@ const intervalCache = new NodeCache({
   checkperiod: 10,
 });
 
+const isAdmin = (walletId: string) => {
+  if (admins.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
 wssAuthenticated.on("connection", function connection(ws, request, wallet) {
   try {
     const chatProfile = wallet as ChatProfile;
@@ -94,6 +104,14 @@ wssAuthenticated.on("connection", function connection(ws, request, wallet) {
             }
           } else {
             logger.info("Received length 0");
+          }
+        } else if (msg.type === "BAN") {
+          if (isAdmin(chatProfile.walletId)) {
+            logger.info("TODO BAN");
+          }
+        } else if (msg.type === "REMOVE") {
+          if (isAdmin(chatProfile.walletId)) {
+            logger.info("TODO REMOVE");
           }
         }
       } catch (err) {
