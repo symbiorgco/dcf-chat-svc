@@ -1,6 +1,7 @@
 import { ChatDataMessage, VerifiedMessage } from "./utils/types";
 import Filter from "bad-words";
 import badWords from "./bad-words.json";
+import { logger } from "./logger";
 
 const MAX_MESSAGES_HISTORY = 25;
 
@@ -9,7 +10,13 @@ export let recentChatMessages: ChatDataMessage[] = [];
 const filter = new Filter();
 filter.addWords(...badWords.words);
 
+const bannedUsers: string[] = [];
+
 const MAX_CHARS = 150;
+
+export const isBanned = (wallet: string): boolean => {
+  return bannedUsers.includes(wallet);
+};
 
 export const verifyMessage = (msg: string): VerifiedMessage => {
   //Rule 1 Char count
@@ -53,4 +60,9 @@ export const removeChatMessage = (id: string): boolean => {
     console.log(`Didnt remove msg ${id}`);
     return false;
   }
+};
+
+export const banUser = (wallet: string) => {
+  bannedUsers.push(wallet);
+  logger.info(`BANNED ${wallet}`);
 };

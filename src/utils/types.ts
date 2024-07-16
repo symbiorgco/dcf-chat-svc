@@ -8,6 +8,7 @@ export interface ChatDataMessage {
   message: string;
   username: string;
   timestamp: number;
+  wallet?: string;
   id: string;
 }
 

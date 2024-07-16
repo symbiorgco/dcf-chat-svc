@@ -9,11 +9,16 @@ import {
 import { logger } from "./logger";
 import http from "http";
 import { verifyJwt } from "./authentication";
-import { addChatMessage, removeChatMessage, verifyMessage } from "./chat";
+import {
+  addChatMessage,
+  banUser,
+  isBanned,
+  removeChatMessage,
+  verifyMessage,
+} from "./chat";
 import NodeCache from "node-cache";
 
 import admins from "./admins.json";
-
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
 
@@ -97,29 +102,32 @@ wssAuthenticated.on(
           const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
           if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
             intervalCache.set(chatProfile.walletId, true);
-            if (msg.message.length > 0) {
-              const verifiedMessage = verifyMessage(msg.message);
-              if (verifiedMessage.error) {
-                //// REPLY ERROR TO THE USER
-                logger.info("Received errored message");
+            if (!isBanned(chatProfile.walletId)) {
+              if (msg.message.length > 0) {
+                const verifiedMessage = verifyMessage(msg.message);
+                if (verifiedMessage.error) {
+                  //// REPLY ERROR TO THE USER
+                  logger.info("Received errored message");
+                } else {
+                  currentId++;
+                  const broadcastMsg: ChatDataMessage = {
+                    type: "MSG",
+                    message: verifiedMessage.msg,
+                    username: chatProfile.nickname,
+                    wallet: chatProfile.walletId, // TODO hide for normal users?
+                    timestamp: Date.now(),
+                    id: `${idPrefix}${currentId}`,
+                  };
+                  addChatMessage(broadcastMsg);
+                  broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+                }
               } else {
-                currentId++;
-                const broadcastMsg: ChatDataMessage = {
-                  type: "MSG",
-                  message: verifiedMessage.msg,
-                  username: chatProfile.nickname,
-                  timestamp: Date.now(),
-                  id: `${idPrefix}${currentId}`,
-                };
-                addChatMessage(broadcastMsg);
-                broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+                logger.info("Received length 0");
               }
-            } else {
-              logger.info("Received length 0");
             }
           } else if (msg.type === "BAN") {
             if (isAdmin(chatProfile.walletId)) {
-              logger.info("TODO BAN");
+              banUser(chatProfile.walletId);
             }
           } else if (msg.type === "REMOVE") {
             if (isAdmin(chatProfile.walletId)) {
