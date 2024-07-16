@@ -42,3 +42,15 @@ export const addChatMessage = (msg: ChatDataMessage) => {
   }
   recentChatMessages.push(msg);
 };
+
+export const removeChatMessage = (id: string): boolean => {
+  const indexToRemove = recentChatMessages.findIndex((msg) => msg.id === id);
+  if (indexToRemove != -1) {
+    console.log(`Remove msg ${id}`);
+    recentChatMessages.splice(indexToRemove, 1);
+    return true;
+  } else {
+    console.log(`Didnt remove msg ${id}`);
+    return false;
+  }
+};

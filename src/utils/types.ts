@@ -8,12 +8,14 @@ export interface ChatDataMessage {
   message: string;
   username: string;
   timestamp: number;
+  id: string;
 }
 
 export interface ChatProfile {
   walletId: string;
   profileImageUrl: string;
   nickname: string;
+  role: string;
 }
 
 export interface VerifiedMessage {

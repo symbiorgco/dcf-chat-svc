@@ -9,7 +9,7 @@ import {
 import { logger } from "./logger";
 import http from "http";
 import { verifyJwt } from "./authentication";
-import { addChatMessage, verifyMessage } from "./chat";
+import { addChatMessage, removeChatMessage, verifyMessage } from "./chat";
 import NodeCache from "node-cache";
 
 import admins from "./admins.json";
@@ -18,23 +18,21 @@ const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
 
 server.on("upgrade", async function upgrade(request, socket, head) {
-  let verifiedWalletId: ChatProfile = undefined;
+  let chatProfile: ChatProfile = undefined;
 
   try {
     const headers = request.headers;
 
-    verifiedWalletId = await verifyJwt(
-      headers["sec-websocket-protocol"] as string
-    );
+    chatProfile = await verifyJwt(headers["sec-websocket-protocol"] as string);
 
-    if (!verifiedWalletId) {
+    if (!chatProfile) {
       logger.info(`[JWT] error player connecting not verified`);
       socket.destroy();
       return;
     }
 
     wssAuthenticated.handleUpgrade(request, socket, head, function done(ws) {
-      wssAuthenticated.emit("connection", ws, request, verifiedWalletId);
+      wssAuthenticated.emit("connection", ws, request, chatProfile);
     });
   } catch (err) {
     logger.error(`[JWT] error player connecting`);
@@ -76,53 +74,78 @@ const isAdmin = (walletId: string) => {
   }
 };
 
-wssAuthenticated.on("connection", function connection(ws, request, wallet) {
-  try {
-    const chatProfile = wallet as ChatProfile;
-    logger.info(
-      `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname}`
-    );
-    ws.on("message", function message(data) {
-      try {
-        const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
-        if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
-          intervalCache.set(chatProfile.walletId, true);
-          if (msg.message.length > 0) {
-            const verifiedMessage = verifyMessage(msg.message);
-            if (verifiedMessage.error) {
-              //// REPLY ERROR TO THE USER
-              logger.info("Received errored message");
+let idPrefix = "prefix";
+let currentId = 0;
+
+wssAuthenticated.on(
+  "connection",
+  function connection(ws, request, chatProfile: ChatProfile) {
+    try {
+      logger.info(
+        `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname}`
+      );
+      const chatProfileMSG: ChatDataMessage = {
+        type: "PROFILE",
+        message: chatProfile.role,
+        username: chatProfile.nickname,
+        timestamp: Date.now(),
+        id: "",
+      };
+      ws.send(Buffer.from(JSON.stringify(chatProfileMSG)), { binary: false });
+      ws.on("message", function message(data) {
+        try {
+          const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
+          if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
+            intervalCache.set(chatProfile.walletId, true);
+            if (msg.message.length > 0) {
+              const verifiedMessage = verifyMessage(msg.message);
+              if (verifiedMessage.error) {
+                //// REPLY ERROR TO THE USER
+                logger.info("Received errored message");
+              } else {
+                currentId++;
+                const broadcastMsg: ChatDataMessage = {
+                  type: "MSG",
+                  message: verifiedMessage.msg,
+                  username: chatProfile.nickname,
+                  timestamp: Date.now(),
+                  id: `${idPrefix}${currentId}`,
+                };
+                addChatMessage(broadcastMsg);
+                broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+              }
             } else {
-              const broadcastMsg: ChatDataMessage = {
-                type: "MSG",
-                message: verifiedMessage.msg,
-                username: chatProfile.nickname,
-                timestamp: Date.now(),
-              };
-              addChatMessage(broadcastMsg);
-              broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+              logger.info("Received length 0");
             }
-          } else {
-            logger.info("Received length 0");
+          } else if (msg.type === "BAN") {
+            if (isAdmin(chatProfile.walletId)) {
+              logger.info("TODO BAN");
+            }
+          } else if (msg.type === "REMOVE") {
+            if (isAdmin(chatProfile.walletId)) {
+              const idToRemove = msg.message;
+              const broadcastMsg: ChatDataMessage = {
+                type: "REMOVE",
+                message: "",
+                username: "",
+                timestamp: Date.now(),
+                id: idToRemove,
+              };
+              if (removeChatMessage(idToRemove)) {
+                broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+              }
+            }
           }
-        } else if (msg.type === "BAN") {
-          if (isAdmin(chatProfile.walletId)) {
-            logger.info("TODO BAN");
-          }
-        } else if (msg.type === "REMOVE") {
-          if (isAdmin(chatProfile.walletId)) {
-            logger.info("TODO REMOVE");
-          }
+        } catch (err) {
+          logger.error("received: %s", data);
+          logger.error(err);
         }
-      } catch (err) {
-        logger.error("received: %s", data);
-        logger.error(err);
-      }
-    });
-  } catch (err) {
-    logger.error(err);
+      });
+    } catch (err) {
+      logger.error(err);
+    }
   }
-});
+);
 
 const updateViewers = () => {
   viewers = wssAuthenticated.clients.size + wssViewers.clients.size;
@@ -134,12 +157,16 @@ const heartbeat = async () => {
     type: "PING",
     message: "",
     username: "",
+    id: "",
     timestamp: Date.now(),
   };
   broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
 };
 
 export const initWebsockets = () => {
+  const rnd = Math.floor(Math.random() * 1000000);
+  idPrefix = `${rnd}-`;
+
   server.listen(Number.parseInt(process.env.PORT_WS_AUTH));
 
   // Stats Timers

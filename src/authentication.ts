@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import axios from "axios";
 import { logger } from "./logger";
 import { ChatProfile } from "./utils/types";
+import admins from "./admins.json";
 
 const DEALER_API = process.env.DEALER_API as string;
 
@@ -34,9 +35,17 @@ export const verifyJwt = async (
         .then((response) => {
           if (response.data.payload.isSuccessful === true) {
             const newChatProfile = response.data.payload.profile as ChatProfile;
+
             logger.info(
               `[JWT] New user authenticated ${newChatProfile.walletId} Nickname: ${newChatProfile.nickname}`
             );
+
+            if (admins.includes(newChatProfile.walletId)) {
+              newChatProfile.role = "ADMIN";
+            } else {
+              newChatProfile.role = "MEMBER";
+            }
+
             authenticatedCache.set(authToken, newChatProfile);
             return newChatProfile;
           } else {
