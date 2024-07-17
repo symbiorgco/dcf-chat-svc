@@ -6,6 +6,12 @@ export interface ChatDataRequestMessage {
 export enum CHAT_COLOR {
   WHITE = 0,
   ORANGE = 1,
+  LIGHT_GREEN = 2,
+  DARK_GREEN = 3,
+  LIGHT_BLUE = 4,
+  DARK_BLUE = 5,
+  PURPLE = 6,
+  PINK = 7,
 }
 
 export interface ChatDataMessage {

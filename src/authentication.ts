@@ -12,9 +12,9 @@ import { addWalletToChat, isAllowedToChat } from "./chat";
 const DEALER_API = process.env.DEALER_API as string;
 
 const authenticatedCache = new NodeCache({
-  stdTTL: 60,
-  checkperiod: 3600,
-}); //Remember aprox 12 hours
+  stdTTL: 90,
+  checkperiod: 1200,
+});
 
 const verifyIfCanChat = async (wallet: string, authToken: string) => {
   if (isAllowedToChat(wallet)) return;
@@ -39,8 +39,9 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
       addWalletToChat(wallet);
     }
   } catch (e) {
-    logger.error(`Error fetching wallet History ${debugPayload}`);
-    logger.error(e);
+    logger.error(
+      `Error fetching wallet history of player ${wallet?.toString()}`
+    );
   }
 };
 
