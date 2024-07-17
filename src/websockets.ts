@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
 import {
+  CHAT_COLOR,
   ChatDataMessage,
   ChatDataRequestMessage,
   ChatProfile,
@@ -12,6 +13,7 @@ import { verifyJwt } from "./authentication";
 import {
   addChatMessage,
   banUser,
+  isAllowedToChat,
   isBanned,
   removeChatMessage,
   verifyMessage,
@@ -102,28 +104,46 @@ wssAuthenticated.on(
           const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
           if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
             intervalCache.set(chatProfile.walletId, true);
-            if (!isBanned(chatProfile.walletId)) {
-              if (msg.message.length > 0) {
-                const verifiedMessage = verifyMessage(msg.message);
-                if (verifiedMessage.error) {
-                  //// REPLY ERROR TO THE USER
-                  logger.info("Received errored message");
+
+            // Check if allowed to chat
+            if (isAllowedToChat(chatProfile.walletId)) {
+              if (!isBanned(chatProfile.walletId)) {
+                if (msg.message.length > 0) {
+                  const verifiedMessage = verifyMessage(msg.message);
+                  if (verifiedMessage.error) {
+                    //// REPLY ERROR TO THE USER
+                    logger.info("Received errored message");
+                  } else {
+                    currentId++;
+                    const broadcastMsg: ChatDataMessage = {
+                      type: "MSG",
+                      message: verifiedMessage.msg,
+                      username: chatProfile.nickname,
+                      wallet: chatProfile.walletId, // TODO hide for normal users?
+                      timestamp: Date.now(),
+                      color: isAdmin(chatProfile.walletId)
+                        ? CHAT_COLOR.ORANGE
+                        : CHAT_COLOR.WHITE,
+                      id: `${idPrefix}${currentId}`,
+                    };
+                    addChatMessage(broadcastMsg);
+                    broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+                  }
                 } else {
-                  currentId++;
-                  const broadcastMsg: ChatDataMessage = {
-                    type: "MSG",
-                    message: verifiedMessage.msg,
-                    username: chatProfile.nickname,
-                    wallet: chatProfile.walletId, // TODO hide for normal users?
-                    timestamp: Date.now(),
-                    id: `${idPrefix}${currentId}`,
-                  };
-                  addChatMessage(broadcastMsg);
-                  broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+                  logger.info("Received length 0");
                 }
-              } else {
-                logger.info("Received length 0");
               }
+            } else {
+              const errorMsg: ChatDataMessage = {
+                type: "MSG",
+                message: "You need to play at least one game to chat",
+                username: "SYSTEM",
+                wallet: "SYSTEM",
+                color: CHAT_COLOR.ORANGE,
+                timestamp: Date.now(),
+                id: `${idPrefix}${currentId}`,
+              };
+              ws.send(Buffer.from(JSON.stringify(errorMsg)), { binary: false });
             }
           } else if (msg.type === "BAN") {
             if (isAdmin(chatProfile.walletId)) {

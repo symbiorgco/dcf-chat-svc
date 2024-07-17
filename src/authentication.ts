@@ -6,6 +6,8 @@ import axios from "axios";
 import { logger } from "./logger";
 import { ChatProfile } from "./utils/types";
 import admins from "./admins.json";
+import { DateTime } from "luxon";
+import { addWalletToChat, isAllowedToChat } from "./chat";
 
 const DEALER_API = process.env.DEALER_API as string;
 
@@ -13,6 +15,29 @@ const authenticatedCache = new NodeCache({
   stdTTL: 60,
   checkperiod: 3600,
 }); //Remember aprox 12 hours
+
+const verifyIfCanChat = async (wallet: string, authToken: string) => {
+  if (isAllowedToChat(wallet)) return;
+
+  const startTime = DateTime.utc().minus({ years: 1 }).toISO();
+  try {
+    const response = await axios.get(
+      `${
+        process.env.DEALER_API
+      }/game/2/walletHistory?walletId=${wallet?.toString()}&startTime=${startTime}`,
+      {
+        headers: { Authorization: authToken },
+      }
+    );
+    const items: [] = response.data.payload;
+
+    if (items.length > 0) {
+      addWalletToChat(wallet);
+    }
+  } catch (e) {
+    logger.error("Error fetching wallet History");
+  }
+};
 
 export const verifyJwt = async (
   authToken: string
@@ -47,6 +72,8 @@ export const verifyJwt = async (
             }
 
             authenticatedCache.set(authToken, newChatProfile);
+            verifyIfCanChat(newChatProfile.walletId, authToken);
+
             return newChatProfile;
           } else {
             logger.info(`[JWT] user connection failure ${walletId}`);

@@ -2,6 +2,8 @@ import { ChatDataMessage, VerifiedMessage } from "./utils/types";
 import Filter from "bad-words";
 import badWords from "./bad-words.json";
 import { logger } from "./logger";
+import { DateTime } from "luxon";
+import axios from "axios";
 
 const MAX_MESSAGES_HISTORY = 25;
 
@@ -11,6 +13,7 @@ const filter = new Filter();
 filter.addWords(...badWords.words);
 
 const bannedUsers: string[] = [];
+const allowedUsers: string[] = [];
 
 const MAX_CHARS = 150;
 
@@ -65,4 +68,15 @@ export const removeChatMessage = (id: string): boolean => {
 export const banUser = (wallet: string) => {
   bannedUsers.push(wallet);
   logger.info(`BANNED ${wallet}`);
+};
+
+export const isAllowedToChat = (wallet: string) => {
+  return allowedUsers.includes(wallet);
+};
+
+export const addWalletToChat = (wallet: string) => {
+  if (!allowedUsers.includes(wallet)) {
+    logger.info(`Add wallet ${wallet} to be able to chat`);
+    allowedUsers.push(wallet);
+  }
 };
