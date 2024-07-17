@@ -27,7 +27,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
         process.env.DEALER_API
       }/game/2/walletHistory?walletId=${wallet?.toString()}&startTime=${startTime}`,
       {
-        headers: { Authorization: authToken },
+        headers: { Authorization: authToken as string },
       }
     );
 
@@ -39,7 +39,9 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
       addWalletToChat(wallet);
     }
   } catch (e) {
-    logger.error(`Error fetching wallet History ${debugPayload}`);
+    logger.error(
+      `Error fetching wallet History PAYLOAD: ${debugPayload} TOKEN: ${authToken}`
+    );
     logger.error(e);
   }
 };
