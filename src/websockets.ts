@@ -13,6 +13,7 @@ import { verifyJwt } from "./authentication";
 import {
   addChatMessage,
   banUser,
+  getColorForRole,
   isAllowedToChat,
   isBanned,
   removeChatMessage,
@@ -121,9 +122,7 @@ wssAuthenticated.on(
                       username: chatProfile.nickname,
                       wallet: chatProfile.walletId, // TODO hide for normal users?
                       timestamp: Date.now(),
-                      color: isAdmin(chatProfile.walletId)
-                        ? CHAT_COLOR.ORANGE
-                        : CHAT_COLOR.WHITE,
+                      color: getColorForRole(chatProfile.role),
                       id: `${idPrefix}${currentId}`,
                     };
                     addChatMessage(broadcastMsg);
@@ -147,7 +146,7 @@ wssAuthenticated.on(
             }
           } else if (msg.type === "BAN") {
             if (isAdmin(chatProfile.walletId)) {
-              banUser(chatProfile.walletId);
+              banUser(msg.message);
             }
           } else if (msg.type === "REMOVE") {
             if (isAdmin(chatProfile.walletId)) {

@@ -1,4 +1,4 @@
-import { ChatDataMessage, VerifiedMessage } from "./utils/types";
+import { CHAT_COLOR, ChatDataMessage, VerifiedMessage } from "./utils/types";
 import Filter from "bad-words";
 import badWords from "./bad-words.json";
 import { logger } from "./logger";
@@ -81,5 +81,28 @@ export const addWalletToChat = (wallet: string) => {
   if (!allowedUsers.includes(wallet)) {
     logger.info(`Add wallet ${wallet} to be able to chat`);
     allowedUsers.push(wallet);
+  }
+};
+
+export const getColorForRole = (role: string): CHAT_COLOR => {
+  switch (role) {
+    case "ADMIN":
+      return CHAT_COLOR.ORANGE;
+    case "MEMBER":
+      return CHAT_COLOR.WHITE;
+    case "TIER1":
+      return CHAT_COLOR.LIGHT_GREEN;
+    case "TIER2":
+      return CHAT_COLOR.DARK_GREEN;
+    case "TIER3":
+      return CHAT_COLOR.LIGHT_BLUE;
+    case "TIER4":
+      return CHAT_COLOR.DARK_BLUE;
+    case "TIER5":
+      return CHAT_COLOR.PURPLE;
+    case "TIER6":
+      return CHAT_COLOR.PINK;
+    default:
+      return CHAT_COLOR.WHITE;
   }
 };
