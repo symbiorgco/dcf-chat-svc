@@ -20,6 +20,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
   if (isAllowedToChat(wallet)) return;
 
   const startTime = DateTime.utc().minus({ years: 1 }).toISO();
+  let debugPayload = "";
   try {
     const response = await axios.get(
       `${
@@ -29,13 +30,16 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
         headers: { Authorization: authToken },
       }
     );
+
+    debugPayload = JSON.stringify(response.data.payload);
+
     const items: [] = response.data.payload;
 
     if (items.length > 0) {
       addWalletToChat(wallet);
     }
   } catch (e) {
-    logger.error("Error fetching wallet History");
+    logger.error(`Error fetching wallet History ${debugPayload}`);
     logger.error(e);
   }
 };
