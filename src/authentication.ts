@@ -36,6 +36,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
     }
   } catch (e) {
     logger.error("Error fetching wallet History");
+    logger.error(e);
   }
 };
 
