@@ -3,6 +3,7 @@ import Filter from "bad-words";
 import badWords from "./bad-words.json";
 import { logger } from "./logger";
 import fs from "fs";
+import NodeCache from "node-cache";
 
 const MAX_MESSAGES_HISTORY = 25;
 
@@ -16,6 +17,11 @@ const BANNED_USER_FILE = "./banned.json";
 export let bannedUsers = JSON.parse(
   fs.readFileSync(BANNED_USER_FILE, "utf-8")
 ) as string[];
+
+const timedOutCache = new NodeCache({
+  stdTTL: 600,
+  checkperiod: 900,
+});
 
 const allowedUsers: string[] = [];
 
@@ -68,13 +74,26 @@ export const removeChatMessage = (id: string): boolean => {
 };
 
 export const banUser = (wallet: string) => {
-  bannedUsers.push(wallet);
-  logger.info(`BANNED ${wallet}`);
-  fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
+  if (!bannedUsers.includes(wallet)) {
+    bannedUsers.push(wallet);
+    logger.info(`BANNED ${wallet}`);
+    fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
+  }
+};
+
+export const timeoutUser = (wallet: string) => {
+  if (!timedOutCache.has(wallet)) {
+    timedOutCache.set(wallet, true);
+    logger.info(`TIMED-OUT ${wallet}`);
+  }
 };
 
 export const isAllowedToChat = (wallet: string) => {
   return allowedUsers.includes(wallet);
+};
+
+export const isTimedOut = (wallet: string) => {
+  return timedOutCache.has(wallet);
 };
 
 export const addWalletToChat = (wallet: string) => {

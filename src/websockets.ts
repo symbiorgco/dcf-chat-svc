@@ -16,7 +16,9 @@ import {
   getColorForRole,
   isAllowedToChat,
   isBanned,
+  isTimedOut,
   removeChatMessage,
+  timeoutUser,
   verifyMessage,
 } from "./chat";
 import NodeCache from "node-cache";
@@ -85,6 +87,21 @@ const isAdmin = (walletId: string) => {
 let idPrefix = "prefix";
 let currentId = 0;
 
+const sendSystemMessage = (msg: string, ws: any) => {
+  const errorMsg: ChatDataMessage = {
+    type: "MSG",
+    message: msg,
+    username: "SYSTEM",
+    wallet: "SYSTEM",
+    color: CHAT_COLOR.ORANGE,
+    timestamp: Date.now(),
+    id: `${idPrefix}${currentId}B`,
+  };
+  ws.send(Buffer.from(JSON.stringify(errorMsg)), {
+    binary: false,
+  });
+};
+
 wssAuthenticated.on(
   "connection",
   function connection(ws, request, chatProfile: ChatProfile) {
@@ -110,43 +127,44 @@ wssAuthenticated.on(
             if (isAllowedToChat(chatProfile.walletId)) {
               if (!isBanned(chatProfile.walletId)) {
                 if (msg.message.length > 0) {
-                  const verifiedMessage = verifyMessage(msg.message);
-                  if (verifiedMessage.error) {
-                    //// REPLY ERROR TO THE USER
-                    logger.info("Received errored message");
+                  if (isTimedOut(chatProfile.walletId)) {
+                    sendSystemMessage("You are timed out for 10 minutes.", ws);
                   } else {
-                    currentId++;
-                    const broadcastMsg: ChatDataMessage = {
-                      type: "MSG",
-                      message: verifiedMessage.msg,
-                      username: chatProfile.nickname,
-                      wallet: chatProfile.walletId, // TODO hide for normal users?
-                      timestamp: Date.now(),
-                      color: getColorForRole(chatProfile.role),
-                      id: `${idPrefix}${currentId}`,
-                    };
-                    addChatMessage(broadcastMsg);
-                    broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+                    const verifiedMessage = verifyMessage(msg.message);
+                    if (verifiedMessage.error) {
+                      //// REPLY ERROR TO THE USER
+                      logger.info("Received errored message");
+                    } else {
+                      currentId++;
+                      const broadcastMsg: ChatDataMessage = {
+                        type: "MSG",
+                        message: verifiedMessage.msg,
+                        username: chatProfile.nickname,
+                        wallet: chatProfile.walletId, // TODO hide for normal users?
+                        timestamp: Date.now(),
+                        color: getColorForRole(chatProfile.role),
+                        id: `${idPrefix}${currentId}`,
+                      };
+                      addChatMessage(broadcastMsg);
+                      broadcastMessage(
+                        Buffer.from(JSON.stringify(broadcastMsg))
+                      );
+                    }
                   }
                 } else {
                   logger.info("Received length 0");
                 }
               }
             } else {
-              const errorMsg: ChatDataMessage = {
-                type: "MSG",
-                message: "You need to play at least one game to chat",
-                username: "SYSTEM",
-                wallet: "SYSTEM",
-                color: CHAT_COLOR.ORANGE,
-                timestamp: Date.now(),
-                id: `${idPrefix}${currentId}`,
-              };
-              ws.send(Buffer.from(JSON.stringify(errorMsg)), { binary: false });
+              sendSystemMessage(
+                "You need to play at least one game to chat",
+                ws
+              );
             }
           } else if (msg.type === "BAN") {
             if (isAdmin(chatProfile.walletId)) {
               banUser(msg.message);
+              sendSystemMessage(`Banned wallet ${msg.message}`, ws);
             }
           } else if (msg.type === "REMOVE") {
             if (isAdmin(chatProfile.walletId)) {
@@ -161,6 +179,11 @@ wssAuthenticated.on(
               if (removeChatMessage(idToRemove)) {
                 broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
               }
+            }
+          } else if (msg.type === "TIMEOUT") {
+            if (isAdmin(chatProfile.walletId)) {
+              timeoutUser(msg.message);
+              sendSystemMessage(`Timed out wallet ${msg.message}`, ws);
             }
           }
         } catch (err) {
