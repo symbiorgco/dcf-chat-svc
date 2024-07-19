@@ -24,7 +24,10 @@ const timedOutCache = new NodeCache({
   checkperiod: 900,
 });
 
-const allowedUsers: string[] = [];
+const allowedUsers = new NodeCache({
+  stdTTL: 43200,
+  checkperiod: 3600,
+});
 
 const MAX_CHARS = 150;
 
@@ -40,20 +43,26 @@ export const isBanned = (wallet: string): boolean => {
   return bannedUsers.includes(wallet);
 };
 
-export const verifyMessage = (msg: string): VerifiedMessage => {
+export const verifyMessage = (
+  msg: string,
+  skipFiltering = false
+): VerifiedMessage => {
   try {
     //Rule 1 Char count
     const msgWordCounted = msg.substring(0, MAX_CHARS);
 
-    let words = msgWordCounted.split(" ");
-    for (const word of words) {
-      if (word.length > 42) {
-        const erroredMessage: VerifiedMessage = {
-          msg: "",
-          error: true,
-          errorMessage: "Please dont spam or send public keys",
-        };
-        return erroredMessage;
+    //Rule 2 big word count
+    if (!skipFiltering) {
+      let words = msgWordCounted.split(" ");
+      for (const word of words) {
+        if (word.length > 42) {
+          const erroredMessage: VerifiedMessage = {
+            msg: "",
+            error: true,
+            errorMessage: "Please dont spam or send public keys",
+          };
+          return erroredMessage;
+        }
       }
     }
 
@@ -62,8 +71,13 @@ export const verifyMessage = (msg: string): VerifiedMessage => {
 
     //Rule 3 filter bad words
     let filteredMessage;
+
     try {
-      filteredMessage = filter.clean(msgRegex);
+      if (skipFiltering) {
+        filteredMessage = msgRegex;
+      } else {
+        filteredMessage = filter.clean(msgRegex);
+      }
     } catch (err) {
       filteredMessage = msgRegex;
     }
@@ -136,7 +150,7 @@ export const timeoutUser = (wallet: string): boolean => {
 };
 
 export const isAllowedToChat = (wallet: string) => {
-  if (allowedUsers.includes(wallet) || isAdmin(wallet)) {
+  if (allowedUsers.has(wallet) || isAdmin(wallet)) {
     return true;
   } else {
     return false;
@@ -148,9 +162,9 @@ export const isTimedOut = (wallet: string) => {
 };
 
 export const addWalletToChat = (wallet: string) => {
-  if (!allowedUsers.includes(wallet)) {
+  if (!allowedUsers.has(wallet)) {
     logger.info(`Add wallet ${wallet} to be able to chat`);
-    allowedUsers.push(wallet);
+    allowedUsers.set(wallet, true);
   }
 };
 

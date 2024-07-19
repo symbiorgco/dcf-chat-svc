@@ -123,7 +123,10 @@ wssAuthenticated.on(
                   if (isTimedOut(chatProfile.walletId)) {
                     sendSystemMessage("You are timed out for 10 minutes.", ws);
                   } else {
-                    const verifiedMessage = verifyMessage(msg.message);
+                    const verifiedMessage = verifyMessage(
+                      msg.message,
+                      isAdmin(chatProfile.walletId)
+                    );
                     if (verifiedMessage.error) {
                       sendSystemMessage(
                         `Error sending your message: ${verifiedMessage.errorMessage}`,

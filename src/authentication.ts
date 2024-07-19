@@ -12,14 +12,14 @@ import { addWalletToChat, isAllowedToChat } from "./chat";
 const DEALER_API = process.env.DEALER_API as string;
 
 const authenticatedCache = new NodeCache({
-  stdTTL: 90,
+  stdTTL: 120,
   checkperiod: 1200,
 });
 
 const verifyIfCanChat = async (wallet: string, authToken: string) => {
   if (isAllowedToChat(wallet)) return;
 
-  const startTime = DateTime.utc().minus({ years: 1 }).toISO();
+  const startTime = DateTime.utc().minus({ days: 2 }).toISO();
   let debugPayload = "";
   try {
     const response = await axios.get(
