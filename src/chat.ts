@@ -4,9 +4,9 @@ import badWords from "./bad-words.json";
 import { logger } from "./logger";
 import fs from "fs";
 import NodeCache from "node-cache";
-import { PublicKey } from "@solana/web3.js";
 
 const MAX_MESSAGES_HISTORY = 25;
+import admins from "./admins.json";
 
 export let recentChatMessages: ChatDataMessage[] = [];
 
@@ -28,19 +28,16 @@ const allowedUsers: string[] = [];
 
 const MAX_CHARS = 150;
 
-export const isBanned = (wallet: string): boolean => {
-  return bannedUsers.includes(wallet);
-};
-
-const isPublicKey = (word: string) => {
-  try {
-    const publicKey = new PublicKey(word);
-    if (publicKey != undefined) {
-      return true;
-    }
-  } catch (err) {
+export const isAdmin = (walletId: string) => {
+  if (admins.includes(walletId)) {
+    return true;
+  } else {
     return false;
   }
+};
+
+export const isBanned = (wallet: string): boolean => {
+  return bannedUsers.includes(wallet);
 };
 
 export const verifyMessage = (msg: string): VerifiedMessage => {
@@ -49,17 +46,14 @@ export const verifyMessage = (msg: string): VerifiedMessage => {
     const msgWordCounted = msg.substring(0, MAX_CHARS);
 
     let words = msgWordCounted.split(" ");
-    for (const word in words) {
+    for (const word of words) {
       if (word.length > 42) {
-        if (isPublicKey(word)) {
-          // ERR
-          const erroredMessage: VerifiedMessage = {
-            msg: "",
-            error: true,
-            errorMessage: "Don't send public keys",
-          };
-          return erroredMessage;
-        }
+        const erroredMessage: VerifiedMessage = {
+          msg: "",
+          error: true,
+          errorMessage: "Please dont spam or send public keys",
+        };
+        return erroredMessage;
       }
     }
 
@@ -109,23 +103,44 @@ export const removeChatMessage = (id: string): boolean => {
   }
 };
 
-export const banUser = (wallet: string) => {
+export const banUser = (wallet: string): boolean => {
   if (!bannedUsers.includes(wallet)) {
     bannedUsers.push(wallet);
     logger.info(`BANNED ${wallet}`);
     fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
+    return true;
   }
+  return false;
 };
 
-export const timeoutUser = (wallet: string) => {
+export const unbanUser = (wallet: string): boolean => {
+  if (bannedUsers.includes(wallet)) {
+    const index = bannedUsers.findIndex((user) => user === wallet);
+    if (index >= 0) {
+      bannedUsers.splice(index, 1);
+      logger.info(`UNBANNED ${wallet}`);
+      fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
+      return true;
+    }
+  }
+  return false;
+};
+
+export const timeoutUser = (wallet: string): boolean => {
   if (!timedOutCache.has(wallet)) {
     timedOutCache.set(wallet, true);
     logger.info(`TIMED-OUT ${wallet}`);
+    return true;
   }
+  return false;
 };
 
 export const isAllowedToChat = (wallet: string) => {
-  return allowedUsers.includes(wallet);
+  if (allowedUsers.includes(wallet) || isAdmin(wallet)) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 export const isTimedOut = (wallet: string) => {
