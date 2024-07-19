@@ -60,15 +60,19 @@ export let viewers = 0;
 
 export const broadcastMessage = (msg: Buffer) => {
   wssAuthenticated.clients.forEach(async (client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msg, { binary: false });
-    }
+    try {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg, { binary: false });
+      }
+    } catch (err) {}
   });
   // Send to viewers
   wssViewers.clients.forEach(async (client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msg, { binary: false });
-    }
+    try {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg, { binary: false });
+      }
+    } catch (err) {}
   });
 };
 
@@ -155,7 +159,7 @@ wssAuthenticated.on(
               }
             } else {
               sendSystemMessage(
-                "You need to play at least one game to chat",
+                "You need to play at least one game last 5 days to chat",
                 ws
               );
             }
