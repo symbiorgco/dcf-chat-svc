@@ -14,16 +14,17 @@ import {
   addChatMessage,
   banUser,
   getColorForRole,
+  isAdmin,
   isAllowedToChat,
   isBanned,
   isTimedOut,
   removeChatMessage,
   timeoutUser,
+  unbanUser,
   verifyMessage,
 } from "./chat";
 import NodeCache from "node-cache";
 
-import admins from "./admins.json";
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
 
@@ -59,15 +60,19 @@ export let viewers = 0;
 
 export const broadcastMessage = (msg: Buffer) => {
   wssAuthenticated.clients.forEach(async (client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msg, { binary: false });
-    }
+    try {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg, { binary: false });
+      }
+    } catch (err) {}
   });
   // Send to viewers
   wssViewers.clients.forEach(async (client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msg, { binary: false });
-    }
+    try {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg, { binary: false });
+      }
+    } catch (err) {}
   });
 };
 
@@ -75,14 +80,6 @@ const intervalCache = new NodeCache({
   stdTTL: 1, // 1 message per second
   checkperiod: 10,
 });
-
-const isAdmin = (walletId: string) => {
-  if (admins.includes(walletId)) {
-    return true;
-  } else {
-    return false;
-  }
-};
 
 let idPrefix = "prefix";
 let currentId = 0;
@@ -130,10 +127,15 @@ wssAuthenticated.on(
                   if (isTimedOut(chatProfile.walletId)) {
                     sendSystemMessage("You are timed out for 10 minutes.", ws);
                   } else {
-                    const verifiedMessage = verifyMessage(msg.message);
+                    const verifiedMessage = verifyMessage(
+                      msg.message,
+                      isAdmin(chatProfile.walletId)
+                    );
                     if (verifiedMessage.error) {
-                      //// REPLY ERROR TO THE USER
-                      logger.info("Received errored message");
+                      sendSystemMessage(
+                        `Error sending your message: ${verifiedMessage.errorMessage}`,
+                        ws
+                      );
                     } else {
                       currentId++;
                       const broadcastMsg: ChatDataMessage = {
@@ -157,14 +159,17 @@ wssAuthenticated.on(
               }
             } else {
               sendSystemMessage(
-                "You need to play at least one game to chat",
+                "You need to play at least one game last 5 days to chat",
                 ws
               );
             }
           } else if (msg.type === "BAN") {
             if (isAdmin(chatProfile.walletId)) {
-              banUser(msg.message);
-              sendSystemMessage(`Banned wallet ${msg.message}`, ws);
+              const result = banUser(msg.message);
+              sendSystemMessage(
+                `Banned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
+                ws
+              );
             }
           } else if (msg.type === "REMOVE") {
             if (isAdmin(chatProfile.walletId)) {
@@ -182,8 +187,19 @@ wssAuthenticated.on(
             }
           } else if (msg.type === "TIMEOUT") {
             if (isAdmin(chatProfile.walletId)) {
-              timeoutUser(msg.message);
-              sendSystemMessage(`Timed out wallet ${msg.message}`, ws);
+              const result = timeoutUser(msg.message);
+              sendSystemMessage(
+                `Timed out wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
+                ws
+              );
+            }
+          } else if (msg.type === "UNBAN") {
+            if (isAdmin(chatProfile.walletId)) {
+              const result = unbanUser(msg.message);
+              sendSystemMessage(
+                `Unbanned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
+                ws
+              );
             }
           }
         } catch (err) {

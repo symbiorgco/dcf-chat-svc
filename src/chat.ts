@@ -6,6 +6,7 @@ import fs from "fs";
 import NodeCache from "node-cache";
 
 const MAX_MESSAGES_HISTORY = 25;
+import admins from "./admins.json";
 
 export let recentChatMessages: ChatDataMessage[] = [];
 
@@ -23,35 +24,78 @@ const timedOutCache = new NodeCache({
   checkperiod: 900,
 });
 
-const allowedUsers: string[] = [];
+const allowedUsers = new NodeCache({
+  stdTTL: 43200,
+  checkperiod: 3600,
+});
 
 const MAX_CHARS = 150;
+
+export const isAdmin = (walletId: string) => {
+  if (admins.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
+};
 
 export const isBanned = (wallet: string): boolean => {
   return bannedUsers.includes(wallet);
 };
 
-export const verifyMessage = (msg: string): VerifiedMessage => {
-  //Rule 1 Char count
-  const msgWordCounted = msg.substring(0, MAX_CHARS);
-
-  //Rule 2 regex
-  const msgRegex = msgWordCounted.replace(/[^\x20-\x7E\ud000-\udfff]/gi, "?");
-
-  //Rule 3 filter bad words
-  let filteredMessage;
+export const verifyMessage = (
+  msg: string,
+  skipFiltering = false
+): VerifiedMessage => {
   try {
-    filteredMessage = filter.clean(msgRegex);
-  } catch (err) {
-    filteredMessage = msgRegex;
-  }
+    //Rule 1 Char count
+    const msgWordCounted = msg.substring(0, MAX_CHARS);
 
-  const verifiedMessage: VerifiedMessage = {
-    msg: filteredMessage,
-    error: false,
-    errorMessage: "None",
-  };
-  return verifiedMessage;
+    //Rule 2 big word count
+    if (!skipFiltering) {
+      let words = msgWordCounted.split(" ");
+      for (const word of words) {
+        if (word.length > 42) {
+          const erroredMessage: VerifiedMessage = {
+            msg: "",
+            error: true,
+            errorMessage: "Please dont spam or send public keys",
+          };
+          return erroredMessage;
+        }
+      }
+    }
+
+    //Rule 2 regex
+    const msgRegex = msgWordCounted.replace(/[^\x20-\x7E\ud000-\udfff]/gi, "?");
+
+    //Rule 3 filter bad words
+    let filteredMessage;
+
+    try {
+      if (skipFiltering) {
+        filteredMessage = msgRegex;
+      } else {
+        filteredMessage = filter.clean(msgRegex);
+      }
+    } catch (err) {
+      filteredMessage = msgRegex;
+    }
+
+    const verifiedMessage: VerifiedMessage = {
+      msg: filteredMessage,
+      error: false,
+      errorMessage: "None",
+    };
+    return verifiedMessage;
+  } catch (err) {
+    const erroredMessage: VerifiedMessage = {
+      msg: "",
+      error: true,
+      errorMessage: "Error",
+    };
+    return erroredMessage;
+  }
 };
 
 export const addChatMessage = (msg: ChatDataMessage) => {
@@ -73,23 +117,44 @@ export const removeChatMessage = (id: string): boolean => {
   }
 };
 
-export const banUser = (wallet: string) => {
+export const banUser = (wallet: string): boolean => {
   if (!bannedUsers.includes(wallet)) {
     bannedUsers.push(wallet);
     logger.info(`BANNED ${wallet}`);
     fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
+    return true;
   }
+  return false;
 };
 
-export const timeoutUser = (wallet: string) => {
+export const unbanUser = (wallet: string): boolean => {
+  if (bannedUsers.includes(wallet)) {
+    const index = bannedUsers.findIndex((user) => user === wallet);
+    if (index >= 0) {
+      bannedUsers.splice(index, 1);
+      logger.info(`UNBANNED ${wallet}`);
+      fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
+      return true;
+    }
+  }
+  return false;
+};
+
+export const timeoutUser = (wallet: string): boolean => {
   if (!timedOutCache.has(wallet)) {
     timedOutCache.set(wallet, true);
     logger.info(`TIMED-OUT ${wallet}`);
+    return true;
   }
+  return false;
 };
 
 export const isAllowedToChat = (wallet: string) => {
-  return allowedUsers.includes(wallet);
+  if (allowedUsers.has(wallet) || isAdmin(wallet)) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 export const isTimedOut = (wallet: string) => {
@@ -97,9 +162,9 @@ export const isTimedOut = (wallet: string) => {
 };
 
 export const addWalletToChat = (wallet: string) => {
-  if (!allowedUsers.includes(wallet)) {
+  if (!allowedUsers.has(wallet)) {
     logger.info(`Add wallet ${wallet} to be able to chat`);
-    allowedUsers.push(wallet);
+    allowedUsers.set(wallet, true);
   }
 };
 
