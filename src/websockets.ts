@@ -132,8 +132,10 @@ wssAuthenticated.on(
                   } else {
                     const verifiedMessage = verifyMessage(msg.message);
                     if (verifiedMessage.error) {
-                      //// REPLY ERROR TO THE USER
-                      logger.info("Received errored message");
+                      sendSystemMessage(
+                        `Error sending your message: ${verifiedMessage.errorMessage}`,
+                        ws
+                      );
                     } else {
                       currentId++;
                       const broadcastMsg: ChatDataMessage = {

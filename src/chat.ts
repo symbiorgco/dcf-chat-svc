@@ -4,6 +4,7 @@ import badWords from "./bad-words.json";
 import { logger } from "./logger";
 import fs from "fs";
 import NodeCache from "node-cache";
+import { PublicKey } from "@solana/web3.js";
 
 const MAX_MESSAGES_HISTORY = 25;
 
@@ -31,27 +32,62 @@ export const isBanned = (wallet: string): boolean => {
   return bannedUsers.includes(wallet);
 };
 
-export const verifyMessage = (msg: string): VerifiedMessage => {
-  //Rule 1 Char count
-  const msgWordCounted = msg.substring(0, MAX_CHARS);
-
-  //Rule 2 regex
-  const msgRegex = msgWordCounted.replace(/[^\x20-\x7E\ud000-\udfff]/gi, "?");
-
-  //Rule 3 filter bad words
-  let filteredMessage;
+const isPublicKey = (word: string) => {
   try {
-    filteredMessage = filter.clean(msgRegex);
+    const publicKey = new PublicKey(word);
+    if (publicKey != undefined) {
+      return true;
+    }
   } catch (err) {
-    filteredMessage = msgRegex;
+    return false;
   }
+};
 
-  const verifiedMessage: VerifiedMessage = {
-    msg: filteredMessage,
-    error: false,
-    errorMessage: "None",
-  };
-  return verifiedMessage;
+export const verifyMessage = (msg: string): VerifiedMessage => {
+  try {
+    //Rule 1 Char count
+    const msgWordCounted = msg.substring(0, MAX_CHARS);
+
+    let words = msgWordCounted.split(" ");
+    for (const word in words) {
+      if (word.length > 42) {
+        if (isPublicKey(word)) {
+          // ERR
+          const erroredMessage: VerifiedMessage = {
+            msg: "",
+            error: true,
+            errorMessage: "Don't send public keys",
+          };
+          return erroredMessage;
+        }
+      }
+    }
+
+    //Rule 2 regex
+    const msgRegex = msgWordCounted.replace(/[^\x20-\x7E\ud000-\udfff]/gi, "?");
+
+    //Rule 3 filter bad words
+    let filteredMessage;
+    try {
+      filteredMessage = filter.clean(msgRegex);
+    } catch (err) {
+      filteredMessage = msgRegex;
+    }
+
+    const verifiedMessage: VerifiedMessage = {
+      msg: filteredMessage,
+      error: false,
+      errorMessage: "None",
+    };
+    return verifiedMessage;
+  } catch (err) {
+    const erroredMessage: VerifiedMessage = {
+      msg: "",
+      error: true,
+      errorMessage: "Error",
+    };
+    return erroredMessage;
+  }
 };
 
 export const addChatMessage = (msg: ChatDataMessage) => {
