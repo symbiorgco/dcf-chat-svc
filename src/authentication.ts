@@ -80,17 +80,17 @@ export const verifyJwt = async (
               );
 
               if (leaderboardEntry) {
-                if (leaderboardEntry.pnl > 10000 * 1_000_000_000) {
+                if (leaderboardEntry.volume > 10000 * 1_000_000_000) {
                   newChatProfile.role = "TIER6";
-                } else if (leaderboardEntry.pnl > 5000 * 1_000_000_000) {
+                } else if (leaderboardEntry.volume > 5000 * 1_000_000_000) {
                   newChatProfile.role = "TIER5";
-                } else if (leaderboardEntry.pnl > 2500 * 1_000_000_000) {
+                } else if (leaderboardEntry.volume > 2500 * 1_000_000_000) {
                   newChatProfile.role = "TIER4";
-                } else if (leaderboardEntry.pnl > 1000 * 1_000_000_000) {
+                } else if (leaderboardEntry.volume > 1000 * 1_000_000_000) {
                   newChatProfile.role = "TIER3";
-                } else if (leaderboardEntry.pnl > 500 * 1_000_000_000) {
+                } else if (leaderboardEntry.volume > 500 * 1_000_000_000) {
                   newChatProfile.role = "TIER2";
-                } else if (leaderboardEntry.pnl > 100 * 1_000_000_000) {
+                } else if (leaderboardEntry.volume > 100 * 1_000_000_000) {
                   newChatProfile.role = "TIER1";
                 } else {
                   newChatProfile.role = "MEMBER";

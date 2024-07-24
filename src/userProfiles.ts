@@ -3,7 +3,7 @@ import { logger } from "./logger";
 
 type LeaderboardEntry = {
   walletId: string;
-  pnl: number;
+  volume: number;
 };
 
 let LEADERBOARD: LeaderboardEntry[] = [];
@@ -11,7 +11,7 @@ let LEADERBOARD: LeaderboardEntry[] = [];
 const fetchLeaderboard = async () => {
   try {
     await axios
-      .get("https://api.degencointracker.com/v1/pnl-leaderboard")
+      .get("https://api.degencointracker.com/v1/monthly-volume-leaderboard")
       .then((result) => {
         const newLeaderboard = result.data.payload as LeaderboardEntry[];
         if (newLeaderboard.length > 0) {
