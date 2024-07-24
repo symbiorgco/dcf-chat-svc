@@ -8,6 +8,7 @@ import { ChatProfile } from "./utils/types";
 import admins from "./admins.json";
 import { DateTime } from "luxon";
 import { addWalletToChat, isAllowedToChat } from "./chat";
+import { getLeaderboardEntry } from "./userProfiles";
 
 const DEALER_API = process.env.DEALER_API as string;
 
@@ -74,7 +75,29 @@ export const verifyJwt = async (
             if (admins.includes(newChatProfile.walletId)) {
               newChatProfile.role = "ADMIN";
             } else {
-              newChatProfile.role = "MEMBER";
+              const leaderboardEntry = getLeaderboardEntry(
+                newChatProfile.walletId
+              );
+
+              if (leaderboardEntry) {
+                if (leaderboardEntry.pnl > 10000 * 1_000_000_000) {
+                  newChatProfile.role = "TIER6";
+                } else if (leaderboardEntry.pnl > 5000 * 1_000_000_000) {
+                  newChatProfile.role = "TIER5";
+                } else if (leaderboardEntry.pnl > 2500 * 1_000_000_000) {
+                  newChatProfile.role = "TIER4";
+                } else if (leaderboardEntry.pnl > 1000 * 1_000_000_000) {
+                  newChatProfile.role = "TIER3";
+                } else if (leaderboardEntry.pnl > 500 * 1_000_000_000) {
+                  newChatProfile.role = "TIER2";
+                } else if (leaderboardEntry.pnl > 100 * 1_000_000_000) {
+                  newChatProfile.role = "TIER1";
+                } else {
+                  newChatProfile.role = "MEMBER";
+                }
+              } else {
+                newChatProfile.role = "MEMBER";
+              }
             }
 
             authenticatedCache.set(authToken, newChatProfile);

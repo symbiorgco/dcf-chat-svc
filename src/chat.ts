@@ -172,6 +172,8 @@ export const getColorForRole = (role: string): CHAT_COLOR => {
   switch (role) {
     case "ADMIN":
       return CHAT_COLOR.ORANGE;
+    case "MOD":
+      return CHAT_COLOR.ORANGE;
     case "MEMBER":
       return CHAT_COLOR.WHITE;
     case "TIER1":
