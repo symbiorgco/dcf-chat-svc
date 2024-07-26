@@ -10,7 +10,7 @@ import admins from "./admins.json";
 
 export let recentChatMessages: ChatDataMessage[] = [];
 
-const filter = new Filter();
+const filter = new Filter({ emptyList: true });
 filter.addWords(...badWords.words);
 
 const BANNED_USER_FILE = "./banned.json";
