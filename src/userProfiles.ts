@@ -24,7 +24,9 @@ const fetchLeaderboard = async () => {
   }
 };
 
-export const getLeaderboardEntry = (walletId: string) => {
+export const getLeaderboardEntry = (
+  walletId: string
+): LeaderboardEntry | undefined => {
   const found = LEADERBOARD.find((entry) => entry.walletId === walletId);
   if (found) {
     return found;

@@ -20,6 +20,13 @@ const authenticatedCache = new NodeCache({
 const verifyIfCanChat = async (wallet: string, authToken: string) => {
   if (isAllowedToChat(wallet)) return;
 
+  //Quick fix, add players
+  const leaderboardEntry = getLeaderboardEntry(wallet);
+  if (leaderboardEntry && leaderboardEntry.volume > 1 * 1_000_000_000) {
+    addWalletToChat(wallet);
+    return;
+  }
+
   const startTime = DateTime.utc().minus({ days: 5 }).toISO();
   let debugPayload = "";
   try {
