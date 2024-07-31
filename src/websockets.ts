@@ -24,6 +24,7 @@ import {
   verifyMessage,
 } from "./chat";
 import NodeCache from "node-cache";
+import { getLeaderboardEntry } from "./userProfiles";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({ noServer: true });
@@ -127,6 +128,45 @@ wssAuthenticated.on(
                   if (isTimedOut(chatProfile.walletId)) {
                     sendSystemMessage("You are timed out for 10 minutes.", ws);
                   } else {
+                    const leaderboardEntry = getLeaderboardEntry(
+                      chatProfile.walletId
+                    );
+
+                    if (leaderboardEntry) {
+                      if (leaderboardEntry.volume > 10000 * 1_000_000_000) {
+                        chatProfile.role = "TIER6";
+                      } else if (
+                        leaderboardEntry.volume >
+                        5000 * 1_000_000_000
+                      ) {
+                        chatProfile.role = "TIER5";
+                      } else if (
+                        leaderboardEntry.volume >
+                        2500 * 1_000_000_000
+                      ) {
+                        chatProfile.role = "TIER4";
+                      } else if (
+                        leaderboardEntry.volume >
+                        1000 * 1_000_000_000
+                      ) {
+                        chatProfile.role = "TIER3";
+                      } else if (
+                        leaderboardEntry.volume >
+                        500 * 1_000_000_000
+                      ) {
+                        chatProfile.role = "TIER2";
+                      } else if (
+                        leaderboardEntry.volume >
+                        100 * 1_000_000_000
+                      ) {
+                        chatProfile.role = "TIER1";
+                      } else {
+                        chatProfile.role = "MEMBER";
+                      }
+                    } else {
+                      chatProfile.role = "MEMBER";
+                    }
+
                     const verifiedMessage = verifyMessage(
                       msg.message,
                       isAdmin(chatProfile.walletId)
