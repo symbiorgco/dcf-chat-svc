@@ -132,7 +132,7 @@ wssAuthenticated.on(
                       chatProfile.walletId
                     );
 
-                    if (leaderboardEntry) {
+                    if (leaderboardEntry && chatProfile.role === "MEMBER") {
                       if (leaderboardEntry.volume > 10000 * 1_000_000_000) {
                         chatProfile.role = "TIER6";
                       } else if (
@@ -163,8 +163,6 @@ wssAuthenticated.on(
                       } else {
                         chatProfile.role = "MEMBER";
                       }
-                    } else {
-                      chatProfile.role = "MEMBER";
                     }
 
                     const verifiedMessage = verifyMessage(
