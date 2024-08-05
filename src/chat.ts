@@ -103,7 +103,7 @@ export const addChatMessage = (msg: ChatDataMessage) => {
     recentChatMessages.shift();
   }
   recentChatMessages.push(msg);
-  logger.info(`${msg.wallet} - ${msg.username}: ${msg.message}`);
+  logger.info(`CHAT: ${msg.wallet} - ${msg.username}: ${msg.message}`);
 };
 
 export const removeChatMessage = (id: string): boolean => {
