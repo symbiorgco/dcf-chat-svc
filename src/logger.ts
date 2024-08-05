@@ -4,7 +4,10 @@ dotenv.config();
 
 const transport = pino.transport({
   target: "pino-pretty",
-  options: { destination: `./app.log` },
+  options: {
+    destination: `./app.log`,
+    translateTime: "UTC:yyyy-mm-dd HH:MM:ss.l",
+  },
 });
 
 const baseLogger = pino(
