@@ -67,7 +67,10 @@ export const verifyMessage = (
     }
 
     //Rule 2 regex
-    const msgRegex = msgWordCounted.replace(/[^\x20-\x7E\ud000-\udfff]/gi, "?");
+    const msgRegex = msgWordCounted.replace(
+      /[^\x20-\x7E\u2019\ud000-\udfff]/gi,
+      "?"
+    );
 
     //Rule 3 filter bad words
     let filteredMessage;
