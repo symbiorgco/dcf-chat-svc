@@ -197,7 +197,7 @@ wssAuthenticated.on(
               }
             } else {
               sendSystemMessage(
-                "You need to play at least one game last 5 days to chat",
+                "Spam protection. You need to play at least 5 games last 5 days to chat",
                 ws
               );
             }
