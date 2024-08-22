@@ -43,7 +43,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
     const items: [] = response.data.payload;
 
-    if (items.length > 5) {
+    if (items.length > 4) {
       addWalletToChat(wallet);
     }
   } catch (e) {
