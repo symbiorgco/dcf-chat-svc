@@ -42,7 +42,6 @@ router.get("/get_banned_wallets", async (req, res) => {
 
 router.post("/send_announcement", async (req, res) => {
   try {
-    logger.info(req);
     const authKey = req.headers.authorization;
 
     const chatProfile = await verifyJwt(authKey);
@@ -67,7 +66,6 @@ router.post("/send_announcement", async (req, res) => {
       res.json({ error: true, auth: "false" });
     }
   } catch (err) {
-    logger.info(err);
     res.json({ error: true });
   }
 });
