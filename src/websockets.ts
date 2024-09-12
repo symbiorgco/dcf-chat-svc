@@ -92,7 +92,7 @@ export const sendAnnouncement = (
 ) => {
   currentId++;
   const announcement: ChatDataMessage = {
-    type: "MSG",
+    type: "ANNOUNCEMENT",
     message: msg,
     username: "SYSTEM",
     wallet,
