@@ -85,7 +85,44 @@ const intervalCache = new NodeCache({
 let idPrefix = "prefix";
 let currentId = 0;
 
+export const sendAnnouncement = (
+  msg: string,
+  wallet: string,
+  sendToAll: boolean
+) => {
+  currentId++;
+  const announcement: ChatDataMessage = {
+    type: "MSG",
+    message: msg,
+    username: "SYSTEM",
+    wallet,
+    color: CHAT_COLOR.ORANGE,
+    timestamp: Date.now(),
+    id: `${idPrefix}${currentId}`,
+  };
+
+  const msgBuffer = Buffer.from(JSON.stringify(announcement));
+
+  logger.info(
+    `Announcement ${msg} - ${wallet} - ${
+      sendToAll ? "To all" : "To Wallet only"
+    }`
+  );
+
+  if (sendToAll) {
+    addChatMessage(announcement);
+    broadcastMessage(msgBuffer);
+  } else {
+    wssAuthenticated.clients.forEach(async (client) => {
+      try {
+        client.emit("announcement", msgBuffer, wallet);
+      } catch (err) {}
+    });
+  }
+};
+
 const sendSystemMessage = (msg: string, ws: any) => {
+  currentId++;
   const errorMsg: ChatDataMessage = {
     type: "MSG",
     message: msg,
@@ -115,6 +152,15 @@ wssAuthenticated.on(
         id: "",
       };
       ws.send(Buffer.from(JSON.stringify(chatProfileMSG)), { binary: false });
+      ws.on("announcement", function announcement(announcement, wallet) {
+        try {
+          if (wallet === chatProfile.walletId) {
+            ws.send(announcement, {
+              binary: false,
+            });
+          }
+        } catch (err) {}
+      });
       ws.on("message", function message(data) {
         try {
           const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;

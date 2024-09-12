@@ -57,7 +57,7 @@ export const verifyJwt = async (
   authToken: string
 ): Promise<ChatProfile | undefined> => {
   try {
-    const decoded = jwt.decode(authToken);
+    const decoded = jwt.decode(authToken.replace("Bearer ", ""));
     const walletId = decoded["cognito:username"] as string;
 
     const fromCache = authenticatedCache.get(authToken) as ChatProfile;
