@@ -5,7 +5,7 @@ import { logger } from "./logger";
 import fs from "fs";
 import NodeCache from "node-cache";
 
-const MAX_MESSAGES_HISTORY = 25;
+const MAX_MESSAGES_HISTORY = 30;
 import admins from "./admins.json";
 
 export let recentChatMessages: ChatDataMessage[] = [];
