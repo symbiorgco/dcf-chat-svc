@@ -42,11 +42,22 @@ router.get("/get_banned_wallets", async (req, res) => {
 
 router.post("/send_announcement", async (req, res) => {
   try {
+    let authenticated = false;
+
     const authKey = req.headers.authorization;
 
-    const chatProfile = await verifyJwt(authKey);
+    if (!authKey || authKey.length === 0) {
+      if (req.headers["internal-key"] === process.env.INTERNAL_KEY) {
+        authenticated = true;
+      }
+    } else {
+      const chatProfile = await verifyJwt(authKey);
+      if (chatProfile && isAdmin(chatProfile.walletId)) {
+        authenticated = true;
+      }
+    }
 
-    if (chatProfile && isAdmin(chatProfile.walletId)) {
+    if (authenticated) {
       const type = req.body.type as string;
       const message = req.body.message as string;
       const wallet = req.body.wallet as string;
