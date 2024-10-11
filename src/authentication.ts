@@ -82,8 +82,7 @@ export const verifyJwt = async (
 
             if (admins.includes(newChatProfile.walletId)) {
               newChatProfile.role = "ADMIN";
-            }
-            if (mods.includes(newChatProfile.walletId)) {
+            } else if (mods.includes(newChatProfile.walletId)) {
               newChatProfile.role = "MOD";
             } else {
               const leaderboardEntry = getLeaderboardEntry(

@@ -7,6 +7,7 @@ import NodeCache from "node-cache";
 
 const MAX_MESSAGES_HISTORY = 30;
 import admins from "./admins.json";
+import mods from "./mods.json";
 
 export let recentChatMessages: ChatDataMessage[] = [];
 
@@ -33,6 +34,14 @@ const MAX_CHARS = 150;
 
 export const isAdmin = (walletId: string) => {
   if (admins.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+export const isMod = (walletId: string) => {
+  if (mods.includes(walletId)) {
     return true;
   } else {
     return false;
@@ -154,7 +163,7 @@ export const timeoutUser = (wallet: string): boolean => {
 };
 
 export const isAllowedToChat = (wallet: string) => {
-  if (allowedUsers.has(wallet) || isAdmin(wallet)) {
+  if (allowedUsers.has(wallet) || isAdmin(wallet) || isMod(wallet)) {
     return true;
   } else {
     return false;

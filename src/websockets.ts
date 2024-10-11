@@ -17,6 +17,7 @@ import {
   isAdmin,
   isAllowedToChat,
   isBanned,
+  isMod,
   isTimedOut,
   removeChatMessage,
   timeoutUser,
@@ -216,7 +217,8 @@ wssAuthenticated.on(
 
                     const verifiedMessage = verifyMessage(
                       msg.message,
-                      isAdmin(chatProfile.walletId)
+                      isAdmin(chatProfile.walletId) ||
+                        isMod(chatProfile.walletId)
                     );
                     if (verifiedMessage.error) {
                       sendSystemMessage(
@@ -260,7 +262,7 @@ wssAuthenticated.on(
               );
             }
           } else if (msg.type === "REMOVE") {
-            if (isAdmin(chatProfile.walletId)) {
+            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
               const idToRemove = msg.message;
               const broadcastMsg: ChatDataMessage = {
                 type: "REMOVE",
@@ -275,7 +277,7 @@ wssAuthenticated.on(
               }
             }
           } else if (msg.type === "TIMEOUT") {
-            if (isAdmin(chatProfile.walletId)) {
+            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
               const result = timeoutUser(msg.message);
               sendSystemMessage(
                 `Timed out wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
