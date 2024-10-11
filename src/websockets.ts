@@ -99,6 +99,7 @@ export const sendAnnouncement = (
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}`,
+    role: "",
   };
 
   const msgBuffer = Buffer.from(JSON.stringify(announcement));
@@ -131,6 +132,7 @@ const sendSystemMessage = (msg: string, ws: any) => {
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}B`,
+    role: "SYSTEM",
   };
   ws.send(Buffer.from(JSON.stringify(errorMsg)), {
     binary: false,
@@ -150,6 +152,7 @@ wssAuthenticated.on(
         username: chatProfile.nickname,
         timestamp: Date.now(),
         id: "",
+        role: chatProfile.role,
       };
       ws.send(Buffer.from(JSON.stringify(chatProfileMSG)), { binary: false });
       ws.on("announcement", function announcement(announcement, wallet) {
@@ -229,6 +232,7 @@ wssAuthenticated.on(
                         wallet: chatProfile.walletId, // TODO hide for normal users?
                         timestamp: Date.now(),
                         color: getColorForRole(chatProfile.role),
+                        role: chatProfile.role,
                         id: `${idPrefix}${currentId}`,
                       };
                       addChatMessage(broadcastMsg);
@@ -264,6 +268,7 @@ wssAuthenticated.on(
                 username: "",
                 timestamp: Date.now(),
                 id: idToRemove,
+                role: "SYSTEM",
               };
               if (removeChatMessage(idToRemove)) {
                 broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
@@ -309,6 +314,7 @@ const heartbeat = async () => {
     username: "",
     id: "",
     timestamp: Date.now(),
+    role: "SYSTEM",
   };
   broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
 };

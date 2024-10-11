@@ -22,6 +22,7 @@ export interface ChatDataMessage {
   wallet?: string;
   color?: number;
   id: string;
+  role: string;
 }
 
 export interface ChatProfile {
