@@ -6,6 +6,7 @@ import axios from "axios";
 import { logger } from "./logger";
 import { ChatProfile } from "./utils/types";
 import admins from "./admins.json";
+import mods from "./mods.json";
 import { DateTime } from "luxon";
 import { addWalletToChat, isAllowedToChat } from "./chat";
 import { getLeaderboardEntry } from "./userProfiles";
@@ -22,12 +23,12 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
   //Quick fix, add players
   const leaderboardEntry = getLeaderboardEntry(wallet);
-  if (leaderboardEntry && leaderboardEntry.volume > 1 * 1_000_000_000) {
+  if (leaderboardEntry && leaderboardEntry.volume > 0.25 * 1_000_000_000) {
     addWalletToChat(wallet);
     return;
   }
 
-  const startTime = DateTime.utc().minus({ days: 5 }).toISO();
+  const startTime = DateTime.utc().minus({ days: 7 }).toISO();
   let debugPayload = "";
   try {
     const response = await axios.get(
@@ -43,7 +44,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
     const items: [] = response.data.payload;
 
-    if (items.length > 4) {
+    if (items.length > 2) {
       addWalletToChat(wallet);
     }
   } catch (e) {
@@ -81,6 +82,8 @@ export const verifyJwt = async (
 
             if (admins.includes(newChatProfile.walletId)) {
               newChatProfile.role = "ADMIN";
+            } else if (mods.includes(newChatProfile.walletId)) {
+              newChatProfile.role = "MOD";
             } else {
               const leaderboardEntry = getLeaderboardEntry(
                 newChatProfile.walletId
