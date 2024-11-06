@@ -154,3 +154,15 @@ sysctl -w net.ipv4.tcp_wmem='1024 4096 16384'
 sysctl -w net.core.rmem_max=16384
 sysctl -w net.core.wmem_max=16384
 ```
+
+### Axiom filter
+
+```
+declare query_parameters (wallet_filter:string = "");
+dcf_crash
+| where hostname contains "ip-172-31-12-138.us-east-2.compute.internal"
+| where isempty(wallet_filter) or msg contains wallet_filter
+| where msg !contains "[STATS]"
+| where msg !contains "Fetched game"
+| sort by _time desc
+```
