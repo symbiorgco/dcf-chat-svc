@@ -24,6 +24,7 @@
     "nanotimer": "^0.3.15",
     "node-cache": "^5.1.2",
     "pino": "^9.1.0",
+    "pino-axiom": "^1.0.282",
     "pino-pretty": "^11.0.0",
     "ws": "^8.14.2"
   },
