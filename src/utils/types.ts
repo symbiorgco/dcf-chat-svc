@@ -1,6 +1,7 @@
 export interface ChatDataRequestMessage {
   type: string;
   message: string;
+  channel: number;
 }
 
 export enum CHAT_COLOR {
@@ -23,6 +24,7 @@ export interface ChatDataMessage {
   color?: number;
   id: string;
   role: string;
+  channel?: number;
 }
 
 export interface ChatProfile {

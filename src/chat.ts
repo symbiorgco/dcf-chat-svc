@@ -9,7 +9,11 @@ const MAX_MESSAGES_HISTORY = 30;
 import admins from "./admins.json";
 import mods from "./mods.json";
 
-export let recentChatMessages: ChatDataMessage[] = [];
+export let recentChatMessages = new Map<number, ChatDataMessage[]>();
+
+recentChatMessages.set(0, []); // Crash
+recentChatMessages.set(1, []); // Dozer
+recentChatMessages.set(999, []); // Announcements
 
 const filter = new Filter({ emptyList: true });
 filter.addWords(...badWords.words);
@@ -110,19 +114,34 @@ export const verifyMessage = (
   }
 };
 
-export const addChatMessage = (msg: ChatDataMessage) => {
-  if (recentChatMessages.length >= MAX_MESSAGES_HISTORY) {
-    recentChatMessages.shift();
+export const addChatMessage = (msg: ChatDataMessage, channel: number = 0) => {
+  const recentMsg = recentChatMessages.get(channel);
+  if (!recentMsg) {
+    logger.warn(
+      `Channel doesnt exist: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`
+    );
+    return;
   }
-  recentChatMessages.push(msg);
-  logger.info(`CHAT: ${msg.wallet} - ${msg.username}: ${msg.message}`);
+
+  if (recentMsg.length >= MAX_MESSAGES_HISTORY) {
+    recentMsg.shift();
+  }
+  recentMsg.push(msg);
+  logger.info(
+    `CHAT: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`
+  );
 };
 
-export const removeChatMessage = (id: string): boolean => {
-  const indexToRemove = recentChatMessages.findIndex((msg) => msg.id === id);
+export const removeChatMessage = (id: string, channel: number = 0): boolean => {
+  const recentMsg = recentChatMessages.get(channel);
+  if (!recentMsg) {
+    logger.warn(`Channel doesnt exist: CH${channel}`);
+    return;
+  }
+  const indexToRemove = recentMsg.findIndex((msg) => msg.id === id);
   if (indexToRemove != -1) {
     console.log(`Remove msg ${id}`);
-    recentChatMessages.splice(indexToRemove, 1);
+    recentMsg.splice(indexToRemove, 1);
     return true;
   } else {
     console.log(`Didnt remove msg ${id}`);

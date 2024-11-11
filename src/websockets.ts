@@ -92,6 +92,7 @@ export const sendAnnouncement = (
   sendToAll: boolean
 ) => {
   currentId++;
+  const channel = 999;
   const announcement: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg,
@@ -101,6 +102,7 @@ export const sendAnnouncement = (
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}`,
     role: "",
+    channel: channel,
   };
 
   const msgBuffer = Buffer.from(JSON.stringify(announcement));
@@ -112,7 +114,7 @@ export const sendAnnouncement = (
   );
 
   if (sendToAll) {
-    addChatMessage(announcement);
+    addChatMessage(announcement, channel);
     broadcastMessage(msgBuffer);
   } else {
     wssAuthenticated.clients.forEach(async (client) => {
@@ -236,8 +238,9 @@ wssAuthenticated.on(
                         color: getColorForRole(chatProfile.role),
                         role: chatProfile.role,
                         id: `${idPrefix}${currentId}`,
+                        channel: msg.channel,
                       };
-                      addChatMessage(broadcastMsg);
+                      addChatMessage(broadcastMsg, msg.channel);
                       broadcastMessage(
                         Buffer.from(JSON.stringify(broadcastMsg))
                       );
@@ -264,6 +267,7 @@ wssAuthenticated.on(
           } else if (msg.type === "REMOVE") {
             if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
               const idToRemove = msg.message;
+              const channel = msg.channel;
               const broadcastMsg: ChatDataMessage = {
                 type: "REMOVE",
                 message: "",
@@ -271,8 +275,9 @@ wssAuthenticated.on(
                 timestamp: Date.now(),
                 id: idToRemove,
                 role: "SYSTEM",
+                channel,
               };
-              if (removeChatMessage(idToRemove)) {
+              if (removeChatMessage(idToRemove, channel)) {
                 broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
               }
             }
