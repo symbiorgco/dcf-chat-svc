@@ -18,7 +18,18 @@ router.get("/viewers", async (req, res) => {
 
 router.get("/get_history", async (req, res) => {
   try {
-    res.json({ completed: true, messages: recentChatMessages });
+    res.json({ completed: true, messages: recentChatMessages.get(0) }); // Legacy
+  } catch (err) {
+    res.json({ error: true });
+  }
+});
+
+router.get("/get_history_all", async (req, res) => {
+  try {
+    res.json({
+      completed: true,
+      messages: Object.fromEntries(recentChatMessages),
+    });
   } catch (err) {
     res.json({ error: true });
   }
