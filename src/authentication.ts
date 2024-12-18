@@ -58,9 +58,12 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
   try {
     const response = await axios.get(
-      `https://api.dozer.degencoinflip.com/v1/check-player`,
+      `https://api.dozer.degencoinflip.com/v1/playercheck/get`,
       {
-        headers: { Authorization: authToken },
+        headers: {
+          Authorization: authToken,
+          "Content-Type": "application/json",
+        },
       }
     );
 
@@ -78,6 +81,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
     logger.error(
       `Error fetching wallet history of player ${wallet?.toString()}`
     );
+    logger.error(e);
   }
 };
 
