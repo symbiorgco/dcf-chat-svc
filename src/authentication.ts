@@ -58,9 +58,12 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
   try {
     const response = await axios.get(
-      `https://api.dozer.degencoinflip.com/v1/checkplayer/get`,
+      `https://api.dozer.degencoinflip.com/v1/playercheck/get`,
       {
-        headers: { Authorization: authToken },
+        headers: {
+          Authorization: authToken,
+          "Content-Type": "application/json",
+        },
       }
     );
 
