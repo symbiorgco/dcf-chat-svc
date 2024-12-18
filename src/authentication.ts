@@ -30,6 +30,7 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
   const startTime = DateTime.utc().minus({ days: 7 }).toISO();
   let debugPayload = "";
+
   try {
     const response = await axios.get(
       `${
@@ -46,6 +47,32 @@ const verifyIfCanChat = async (wallet: string, authToken: string) => {
 
     if (items.length > 2) {
       addWalletToChat(wallet);
+
+      return;
+    }
+  } catch (e) {
+    logger.error(
+      `Error fetching wallet history of player ${wallet?.toString()}`
+    );
+  }
+
+  try {
+    const response = await axios.get(
+      `https://api.dozer.degencoinflip.com/v1/check-player`,
+      {
+        headers: { Authorization: authToken },
+      }
+    );
+
+    debugPayload = JSON.stringify(response.data.payload);
+
+    const item = response.data.payload;
+
+    logger.info(debugPayload);
+    if (item.isPlayer) {
+      addWalletToChat(wallet);
+
+      return;
     }
   } catch (e) {
     logger.error(
