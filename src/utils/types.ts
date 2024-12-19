@@ -32,6 +32,7 @@ export interface ChatProfile {
   profileImageUrl: string;
   nickname: string;
   role: string;
+  authToken?: string;
 }
 
 export interface VerifiedMessage {
