@@ -9,7 +9,7 @@ import {
 } from "./utils/types";
 import { logger } from "./logger";
 import http from "http";
-import { verifyJwt } from "./authentication";
+import { verifyIfCanChat, verifyJwt } from "./authentication";
 import {
   addChatMessage,
   banUser,
@@ -252,9 +252,11 @@ wssAuthenticated.on(
               }
             } else {
               sendSystemMessage(
-                "Spam protection. You need to play at least 5 games last 5 days to chat",
+                "Spam protection. You need to drop 10 dozer coins or play 2 crash games to chat. Refresh or try again",
                 ws
               );
+
+              verifyIfCanChat(chatProfile.walletId, chatProfile.authToken);
             }
           } else if (msg.type === "BAN") {
             if (isAdmin(chatProfile.walletId)) {

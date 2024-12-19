@@ -18,7 +18,7 @@ const authenticatedCache = new NodeCache({
   checkperiod: 1200,
 });
 
-const verifyIfCanChat = async (wallet: string, authToken: string) => {
+export const verifyIfCanChat = async (wallet: string, authToken: string) => {
   if (isAllowedToChat(wallet)) return;
 
   //Quick fix, add players
@@ -144,6 +144,7 @@ export const verifyJwt = async (
             authenticatedCache.set(authToken, newChatProfile);
             verifyIfCanChat(newChatProfile.walletId, authToken);
 
+            newChatProfile.authToken = authToken;
             return newChatProfile;
           } else {
             logger.info(`[JWT] user connection failure ${walletId}`);
