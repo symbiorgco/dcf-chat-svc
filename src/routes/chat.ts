@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { sendAnnouncement, viewers } from "../websockets";
-import { bannedUsers, isAdmin, recentChatMessages } from "../chat";
+import { bannedUsers, isAdmin, isMod, recentChatMessages } from "../chat";
 import { verifyJwt } from "../authentication";
 import { logger } from "../logger";
 
@@ -41,7 +41,7 @@ router.get("/get_banned_wallets", async (req, res) => {
 
     const chatProfile = await verifyJwt(authKey);
 
-    if (chatProfile && isAdmin(chatProfile.walletId)) {
+    if (chatProfile && (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId))) {
       res.json({ completed: true, wallets: bannedUsers });
     } else {
       res.json({ error: true });
