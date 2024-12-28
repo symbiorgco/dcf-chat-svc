@@ -293,8 +293,8 @@ wssAuthenticated.on(
               );
             }
           } else if (msg.type === "UNBAN") {
-            if (isAdmin(chatProfile.walletId)) {
-              const result = unbanUser(msg.message);
+            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
+              const result = unbanUser(msg.message, chatProfile.walletId);
               sendSystemMessage(
                 `Unbanned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
                 ws
