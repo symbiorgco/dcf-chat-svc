@@ -159,12 +159,12 @@ export const banUser = (wallet: string, adminWallet: string): boolean => {
   return false;
 };
 
-export const unbanUser = (wallet: string): boolean => {
+export const unbanUser = (wallet: string, adminWallet: string): boolean => {
   if (bannedUsers.includes(wallet)) {
     const index = bannedUsers.findIndex((user) => user === wallet);
     if (index >= 0) {
       bannedUsers.splice(index, 1);
-      logger.info(`UNBANNED ${wallet}`);
+      logger.info(`UNBANNED ${wallet} by ${adminWallet}`);
       fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
       return true;
     }
