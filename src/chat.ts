@@ -149,10 +149,10 @@ export const removeChatMessage = (id: string, channel: number = 0): boolean => {
   }
 };
 
-export const banUser = (wallet: string): boolean => {
+export const banUser = (wallet: string, adminWallet: string): boolean => {
   if (!bannedUsers.includes(wallet)) {
     bannedUsers.push(wallet);
-    logger.info(`BANNED ${wallet}`);
+    logger.info(`BANNED ${wallet} by ${adminWallet}`);
     fs.writeFileSync(BANNED_USER_FILE, JSON.stringify(bannedUsers), "utf-8");
     return true;
   }

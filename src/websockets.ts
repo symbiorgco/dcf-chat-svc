@@ -136,6 +136,7 @@ const sendSystemMessage = (msg: string, ws: any) => {
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}B`,
     role: "SYSTEM",
+    channel: 999
   };
   ws.send(Buffer.from(JSON.stringify(errorMsg)), {
     binary: false,
@@ -259,8 +260,8 @@ wssAuthenticated.on(
               verifyIfCanChat(chatProfile.walletId, chatProfile.authToken);
             }
           } else if (msg.type === "BAN") {
-            if (isAdmin(chatProfile.walletId)) {
-              const result = banUser(msg.message);
+            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
+              const result = banUser(msg.message, chatProfile.walletId);
               sendSystemMessage(
                 `Banned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
                 ws
