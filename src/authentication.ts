@@ -5,10 +5,14 @@ import jwt from "jsonwebtoken";
 import axios from "axios";
 import { logger } from "./logger";
 import { ChatProfile } from "./utils/types";
-import admins from "./admins.json";
-import mods from "./mods.json";
 import { DateTime } from "luxon";
-import { addWalletToChat, isAllowedToChat } from "./chat";
+import {
+  addWalletToChat,
+  isAdmin,
+  isAllowedToChat,
+  isHelpfulDegen,
+  isMod,
+} from "./chat";
 import { getLeaderboardEntry } from "./userProfiles";
 
 const DEALER_API = process.env.DEALER_API as string;
@@ -29,21 +33,13 @@ export const verifyIfCanChat = async (wallet: string, authToken: string) => {
   }
 
   const startTime = DateTime.utc().minus({ days: 7 }).toISO();
-  let debugPayload = "";
 
   try {
     const response = await axios.get(
-      `${
-        process.env.DEALER_API
-      }/game/2/walletHistory?walletId=${wallet?.toString()}&startTime=${startTime}`,
-      {
-        headers: { Authorization: authToken },
-      }
+      `${DEALER_API}/game/2/walletHistory?walletId=${wallet?.toString()}&startTime=${startTime}&limit=10`
     );
 
-    debugPayload = JSON.stringify(response.data.payload);
-
-    const items: [] = response.data.payload;
+    const items: any[] = response.data.payload;
 
     if (items.length > 2) {
       addWalletToChat(wallet);
@@ -52,7 +48,7 @@ export const verifyIfCanChat = async (wallet: string, authToken: string) => {
     }
   } catch (e) {
     logger.error(
-      `Error fetching wallet history of player ${wallet?.toString()}`
+      `Error fetching crash wallet history of player ${wallet?.toString()}`
     );
   }
 
@@ -67,11 +63,8 @@ export const verifyIfCanChat = async (wallet: string, authToken: string) => {
       }
     );
 
-    debugPayload = JSON.stringify(response.data.payload);
-
     const item = response.data.payload;
 
-    logger.info(debugPayload);
     if (item.isPlayer) {
       addWalletToChat(wallet);
 
@@ -79,7 +72,7 @@ export const verifyIfCanChat = async (wallet: string, authToken: string) => {
     }
   } catch (e) {
     logger.error(
-      `Error fetching wallet history of player ${wallet?.toString()}`
+      `Error fetching dozer wallet history of player ${wallet?.toString()}`
     );
     logger.error(e);
   }
@@ -111,10 +104,12 @@ export const verifyJwt = async (
               `[JWT] New user authenticated ${newChatProfile.walletId} Nickname: ${newChatProfile.nickname}`
             );
 
-            if (admins.includes(newChatProfile.walletId)) {
+            if (isAdmin(newChatProfile.walletId)) {
               newChatProfile.role = "ADMIN";
-            } else if (mods.includes(newChatProfile.walletId)) {
+            } else if (isMod(newChatProfile.walletId)) {
               newChatProfile.role = "MOD";
+            } else if (isHelpfulDegen(newChatProfile.walletId)) {
+              newChatProfile.role = "HELPFUL_DEGEN";
             } else {
               const leaderboardEntry = getLeaderboardEntry(
                 newChatProfile.walletId

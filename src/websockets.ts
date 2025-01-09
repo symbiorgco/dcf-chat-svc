@@ -17,6 +17,7 @@ import {
   isAdmin,
   isAllowedToChat,
   isBanned,
+  isHelpfulDegen,
   isMod,
   isTimedOut,
   removeChatMessage,
@@ -136,7 +137,7 @@ const sendSystemMessage = (msg: string, ws: any) => {
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}B`,
     role: "SYSTEM",
-    channel: 999
+    channel: 999,
   };
   ws.send(Buffer.from(JSON.stringify(errorMsg)), {
     binary: false,
@@ -260,7 +261,11 @@ wssAuthenticated.on(
               verifyIfCanChat(chatProfile.walletId, chatProfile.authToken);
             }
           } else if (msg.type === "BAN") {
-            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
+            if (
+              isAdmin(chatProfile.walletId) ||
+              isMod(chatProfile.walletId) ||
+              isHelpfulDegen(chatProfile.walletId)
+            ) {
               const result = banUser(msg.message, chatProfile.walletId);
               sendSystemMessage(
                 `Banned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
@@ -268,7 +273,11 @@ wssAuthenticated.on(
               );
             }
           } else if (msg.type === "REMOVE") {
-            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
+            if (
+              isAdmin(chatProfile.walletId) ||
+              isMod(chatProfile.walletId) ||
+              isHelpfulDegen(chatProfile.walletId)
+            ) {
               const idToRemove = msg.message;
               const channel = msg.channel;
               const broadcastMsg: ChatDataMessage = {
@@ -285,7 +294,11 @@ wssAuthenticated.on(
               }
             }
           } else if (msg.type === "TIMEOUT") {
-            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
+            if (
+              isAdmin(chatProfile.walletId) ||
+              isMod(chatProfile.walletId) ||
+              isHelpfulDegen(chatProfile.walletId)
+            ) {
               const result = timeoutUser(msg.message);
               sendSystemMessage(
                 `Timed out wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
@@ -293,7 +306,11 @@ wssAuthenticated.on(
               );
             }
           } else if (msg.type === "UNBAN") {
-            if (isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)) {
+            if (
+              isAdmin(chatProfile.walletId) ||
+              isMod(chatProfile.walletId) ||
+              isHelpfulDegen(chatProfile.walletId)
+            ) {
               const result = unbanUser(msg.message, chatProfile.walletId);
               sendSystemMessage(
                 `Unbanned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
