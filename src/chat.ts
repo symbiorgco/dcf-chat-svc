@@ -8,6 +8,7 @@ import NodeCache from "node-cache";
 const MAX_MESSAGES_HISTORY = 30;
 import admins from "./admins.json";
 import mods from "./mods.json";
+import helpfulDegens from "./helpful_degens.json";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
 
@@ -46,6 +47,14 @@ export const isAdmin = (walletId: string) => {
 
 export const isMod = (walletId: string) => {
   if (mods.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+export const isHelpfulDegen = (walletId: string) => {
+  if (helpfulDegens.includes(walletId)) {
     return true;
   } else {
     return false;
@@ -182,7 +191,12 @@ export const timeoutUser = (wallet: string): boolean => {
 };
 
 export const isAllowedToChat = (wallet: string) => {
-  if (allowedUsers.has(wallet) || isAdmin(wallet) || isMod(wallet)) {
+  if (
+    allowedUsers.has(wallet) ||
+    isAdmin(wallet) ||
+    isMod(wallet) ||
+    isHelpfulDegen(wallet)
+  ) {
     return true;
   } else {
     return false;
@@ -205,6 +219,8 @@ export const getColorForRole = (role: string): CHAT_COLOR => {
     case "ADMIN":
       return CHAT_COLOR.ORANGE;
     case "MOD":
+      return CHAT_COLOR.ORANGE;
+    case "HELPFUL_DEGEN":
       return CHAT_COLOR.ORANGE;
     case "MEMBER":
       return CHAT_COLOR.WHITE;
