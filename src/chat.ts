@@ -14,6 +14,10 @@ export let recentChatMessages = new Map<number, ChatDataMessage[]>();
 
 recentChatMessages.set(0, []); // Crash
 recentChatMessages.set(1, []); // Dozer
+recentChatMessages.set(2, []); // Towers
+recentChatMessages.set(3, []); // Coinflip
+recentChatMessages.set(4, []); // Placeholder 1
+recentChatMessages.set(5, []); // Placeholder 2
 recentChatMessages.set(999, []); // Announcements
 
 const filter = new Filter({ emptyList: true });
