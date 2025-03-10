@@ -4,12 +4,14 @@ import { sendAnnouncement, viewers } from "../websockets";
 import {
   bannedUsers,
   isAdmin,
+  isAllowedToChat,
   isHelpfulDegen,
   isMod,
   recentChatMessages,
 } from "../chat";
 import { verifyJwt } from "../authentication";
-import { logger } from "../logger";
+import { logChatReport } from "../utils/modLogging";
+import { P } from "pino/pino";
 
 export const router = express.Router();
 
@@ -58,6 +60,44 @@ router.get("/get_banned_wallets", async (req, res) => {
       res.json({ error: true });
     }
   } catch (err) {
+    res.json({ error: true });
+  }
+});
+
+router.post("/report", async (req, res) => {
+  try {
+    console.log("Reporting");
+    const authKey = req.headers.authorization;
+
+    const chatProfile = await verifyJwt(authKey);
+
+    if (chatProfile) {
+      if (isAllowedToChat(chatProfile.walletId)) {
+        //Allowed to chat = allowed to report
+        const channel = Number.parseInt(req.body.channel);
+        const message = recentChatMessages
+          .get(channel)
+          .find((msg) => msg.id === req.body.id);
+        if (message) {
+          await logChatReport(
+            chatProfile.walletId,
+            chatProfile.nickname,
+            message.wallet,
+            message.username,
+            message.message
+          );
+          res.json({ completed: true });
+        } else {
+          res.json({ error: true, message: "Cannot report this message" });
+        }
+      } else {
+        res.json({ error: true, message: "Cannot report" });
+      }
+    } else {
+      res.json({ error: true });
+    }
+  } catch (err) {
+    console.log(err); //TODO REMOVE
     res.json({ error: true });
   }
 });
