@@ -30,7 +30,7 @@ export let bannedUsers = JSON.parse(
 ) as string[];
 
 const timedOutCache = new NodeCache({
-  stdTTL: 600,
+  stdTTL: 1800,
   checkperiod: 900,
 });
 
@@ -188,7 +188,7 @@ export const unbanUser = (wallet: string, adminWallet: string): boolean => {
 export const timeoutUser = (wallet: string): boolean => {
   if (!timedOutCache.has(wallet)) {
     timedOutCache.set(wallet, true);
-    logger.info(`TIMED-OUT ${wallet}`);
+    logger.info(`TIMED-OUT ${wallet} for 30 minutes`);
     return true;
   }
   return false;

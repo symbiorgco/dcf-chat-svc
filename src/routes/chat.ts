@@ -11,7 +11,12 @@ import {
 } from "../chat";
 import { verifyJwt } from "../authentication";
 import { logChatReport } from "../utils/modLogging";
-import { P } from "pino/pino";
+import NodeCache from "node-cache";
+
+const reportIntervalCache = new NodeCache({
+  stdTTL: 10, // 1 message per second
+  checkperiod: 30,
+});
 
 export const router = express.Router();
 
@@ -73,6 +78,14 @@ router.post("/report", async (req, res) => {
 
     if (chatProfile) {
       if (isAllowedToChat(chatProfile.walletId)) {
+        if (reportIntervalCache.get(chatProfile.walletId)) {
+          res.json({
+            error: true,
+            message: "Please don't spam the reports",
+          });
+          return;
+        }
+        reportIntervalCache.set(chatProfile.walletId, true);
         //Allowed to chat = allowed to report
         const channel = Number.parseInt(req.body.channel);
         const message = recentChatMessages

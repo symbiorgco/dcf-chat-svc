@@ -180,7 +180,7 @@ wssAuthenticated.on(
               if (!isBanned(chatProfile.walletId)) {
                 if (msg.message.length > 0) {
                   if (isTimedOut(chatProfile.walletId)) {
-                    sendSystemMessage("You are timed out for 10 minutes.", ws);
+                    sendSystemMessage("You are timed out for 30 minutes.", ws);
                   } else {
                     const leaderboardEntry = getLeaderboardEntry(
                       chatProfile.walletId
