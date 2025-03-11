@@ -29,7 +29,7 @@ export const logChatReport = async (
       embeds: [
         {
           title: "Chat Report",
-          color: 15258703,
+          color: 10181046,
           fields: [
             {
               name: "Reported Message",
@@ -65,7 +65,7 @@ export const logBan = async (
       embeds: [
         {
           title: "BAN REPORT",
-          color: 15258703,
+          color: 15548997,
           fields: [
             {
               name: "Wallet",
@@ -93,7 +93,7 @@ export const logTimeout = async (
       embeds: [
         {
           title: "TIMEOUT REPORT",
-          color: 15258703,
+          color: 15105570,
           fields: [
             {
               name: "Wallet",
@@ -121,7 +121,7 @@ export const logUnban = async (
       embeds: [
         {
           title: "UNBAN REPORT",
-          color: 15258703,
+          color: 5763719,
           fields: [
             {
               name: "Wallet",
