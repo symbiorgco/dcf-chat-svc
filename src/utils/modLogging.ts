@@ -23,30 +23,118 @@ export const logChatReport = async (
   reportedUsername: string,
   chatMessage: string
 ) => {
-  await logMessageToLoggerChannel({
-    username: "DCF Chat Moderation",
-    embeds: [
-      {
-        title: "Chat Report",
-        color: 15258703,
-        fields: [
-          {
-            name: "Reported Message",
-            value: chatMessage,
+  try {
+    await logMessageToLoggerChannel({
+      username: "DCF Chat Moderation",
+      embeds: [
+        {
+          title: "Chat Report",
+          color: 15258703,
+          fields: [
+            {
+              name: "Reported Message",
+              value: chatMessage,
+            },
+            {
+              name: "Wallet",
+              value: reportedWallet,
+            },
+            {
+              name: "Username",
+              value: reportedUsername,
+            },
+          ],
+          footer: {
+            text: `Reported by ${requestingWallet} - ${requestingUsername} `,
           },
-          {
-            name: "Wallet",
-            value: reportedWallet,
-          },
-          {
-            name: "Username",
-            value: reportedUsername,
-          },
-        ],
-        footer: {
-          text: `Reported by ${requestingWallet} - ${requestingUsername} `,
         },
-      },
-    ],
-  });
+      ],
+    });
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+export const logBan = async (
+  requestingUsername: string,
+  bannedWallet: string
+) => {
+  try {
+    await logMessageToLoggerChannel({
+      username: "DCF Chat Moderation",
+      embeds: [
+        {
+          title: "BAN REPORT",
+          color: 15258703,
+          fields: [
+            {
+              name: "Wallet",
+              value: bannedWallet,
+            },
+          ],
+          footer: {
+            text: `Banned by ${requestingUsername} `,
+          },
+        },
+      ],
+    });
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+export const logTimeout = async (
+  requestingUsername: string,
+  timedoutWallet: string
+) => {
+  try {
+    await logMessageToLoggerChannel({
+      username: "DCF Chat Moderation",
+      embeds: [
+        {
+          title: "TIMEOUT REPORT",
+          color: 15258703,
+          fields: [
+            {
+              name: "Wallet",
+              value: timedoutWallet,
+            },
+          ],
+          footer: {
+            text: `Timed out 30 minutes by ${requestingUsername} `,
+          },
+        },
+      ],
+    });
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+export const logUnban = async (
+  requestingUsername: string,
+  bannedWallet: string
+) => {
+  try {
+    await logMessageToLoggerChannel({
+      username: "DCF Chat Moderation",
+      embeds: [
+        {
+          title: "UNBAN REPORT",
+          color: 15258703,
+          fields: [
+            {
+              name: "Wallet",
+              value: bannedWallet,
+            },
+          ],
+          footer: {
+            text: `Unbanned by ${requestingUsername} `,
+          },
+        },
+      ],
+    });
+  } catch (err) {
+    console.log(err);
+  }
 };

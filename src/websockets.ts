@@ -27,9 +27,14 @@ import {
 } from "./chat";
 import NodeCache from "node-cache";
 import { getLeaderboardEntry } from "./userProfiles";
+import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 
 const server = http.createServer();
-export const wssAuthenticated = new WebSocketServer({ noServer: true });
+export const wssAuthenticated = new WebSocketServer({
+  noServer: true,
+  maxPayload: 512,
+  autoPong: false,
+});
 
 server.on("upgrade", async function upgrade(request, socket, head) {
   let chatProfile: ChatProfile = undefined;
@@ -58,6 +63,8 @@ server.on("upgrade", async function upgrade(request, socket, head) {
 
 export const wssViewers = new WebSocketServer({
   port: Number.parseInt(process.env.PORT_WS_VIEW),
+  maxPayload: 512,
+  autoPong: false,
 });
 export let viewers = 0;
 
@@ -251,6 +258,8 @@ wssAuthenticated.on(
                 } else {
                   logger.info("Received length 0");
                 }
+              } else {
+                sendSystemMessage("You are banned.", ws);
               }
             } else {
               sendSystemMessage(
@@ -266,9 +275,12 @@ wssAuthenticated.on(
               isMod(chatProfile.walletId) ||
               isHelpfulDegen(chatProfile.walletId)
             ) {
-              const result = banUser(msg.message, chatProfile.walletId);
+              const banned = banUser(msg.message, chatProfile.walletId);
+              if (banned) {
+                logBan(chatProfile.nickname, msg.message);
+              }
               sendSystemMessage(
-                `Banned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
+                `Banned wallet ${msg.message}: ${banned ? "TRUE" : "FALSE"}`,
                 ws
               );
             }
@@ -299,9 +311,14 @@ wssAuthenticated.on(
               isMod(chatProfile.walletId) ||
               isHelpfulDegen(chatProfile.walletId)
             ) {
-              const result = timeoutUser(msg.message);
+              const timedOut = timeoutUser(msg.message);
+              if (timedOut) {
+                logTimeout(chatProfile.nickname, msg.message);
+              }
               sendSystemMessage(
-                `Timed out wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
+                `Timed out wallet ${msg.message}: ${
+                  timedOut ? "TRUE" : "FALSE"
+                }`,
                 ws
               );
             }
@@ -311,9 +328,14 @@ wssAuthenticated.on(
               isMod(chatProfile.walletId) ||
               isHelpfulDegen(chatProfile.walletId)
             ) {
-              const result = unbanUser(msg.message, chatProfile.walletId);
+              const unbanned = unbanUser(msg.message, chatProfile.walletId);
+              if (unbanned) {
+                logUnban(chatProfile.nickname, msg.message);
+              }
               sendSystemMessage(
-                `Unbanned wallet ${msg.message}: ${result ? "TRUE" : "FALSE"}`,
+                `Unbanned wallet ${msg.message}: ${
+                  unbanned ? "TRUE" : "FALSE"
+                }`,
                 ws
               );
             }
