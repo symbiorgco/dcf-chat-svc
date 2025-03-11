@@ -14,6 +14,10 @@ export let recentChatMessages = new Map<number, ChatDataMessage[]>();
 
 recentChatMessages.set(0, []); // Crash
 recentChatMessages.set(1, []); // Dozer
+recentChatMessages.set(2, []); // Towers
+recentChatMessages.set(3, []); // Coinflip
+recentChatMessages.set(4, []); // Placeholder 1
+recentChatMessages.set(5, []); // Placeholder 2
 recentChatMessages.set(999, []); // Announcements
 
 const filter = new Filter({ emptyList: true });
@@ -26,7 +30,7 @@ export let bannedUsers = JSON.parse(
 ) as string[];
 
 const timedOutCache = new NodeCache({
-  stdTTL: 600,
+  stdTTL: 1800,
   checkperiod: 900,
 });
 
@@ -184,7 +188,7 @@ export const unbanUser = (wallet: string, adminWallet: string): boolean => {
 export const timeoutUser = (wallet: string): boolean => {
   if (!timedOutCache.has(wallet)) {
     timedOutCache.set(wallet, true);
-    logger.info(`TIMED-OUT ${wallet}`);
+    logger.info(`TIMED-OUT ${wallet} for 30 minutes`);
     return true;
   }
   return false;
