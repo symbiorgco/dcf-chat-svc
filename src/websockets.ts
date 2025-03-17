@@ -248,6 +248,7 @@ wssAuthenticated.on(
                         role: chatProfile.role,
                         id: `${idPrefix}${currentId}`,
                         channel: msg.channel,
+                        icon: chatProfile.profileImageUrl,
                       };
                       addChatMessage(broadcastMsg, msg.channel);
                       broadcastMessage(

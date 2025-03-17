@@ -25,6 +25,7 @@ export interface ChatDataMessage {
   id: string;
   role: string;
   channel?: number;
+  icon?: string;
 }
 
 export interface ChatProfile {
