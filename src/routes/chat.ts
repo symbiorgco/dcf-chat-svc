@@ -97,7 +97,8 @@ router.post("/report", async (req, res) => {
             chatProfile.nickname,
             message.wallet,
             message.username,
-            message.message
+            message.message,
+            channel
           );
           res.json({ completed: true });
         } else {
