@@ -1,4 +1,5 @@
 import axios from "axios";
+import { CHAT_CHANNEL } from "../chat";
 
 const BASE_URL = `https://discord.com/api/webhooks`;
 const DISCORD_CHANNELS = {
@@ -16,19 +17,42 @@ const logMessageToLoggerChannel = async (
   return response;
 };
 
+enum HARDCODED_URL {
+  CRASH = "https://crash.degencoinflip.com/",
+  DOZER = "https://degencoindozer.com/",
+  TOWERS = "https://towers.degencoinflip.com/",
+}
+
 export const logChatReport = async (
   requestingWallet: string,
   requestingUsername: string,
   reportedWallet: string,
   reportedUsername: string,
-  chatMessage: string
+  chatMessage: string,
+  channel: number
 ) => {
   try {
+    let url = "";
+
+    switch (channel) {
+      case CHAT_CHANNEL.CRASH:
+        url = HARDCODED_URL.CRASH;
+        break;
+      case CHAT_CHANNEL.DOZER:
+        url = HARDCODED_URL.DOZER;
+        break;
+      case CHAT_CHANNEL.TOWERS:
+        url = HARDCODED_URL.TOWERS;
+        break;
+      default:
+        url = "";
+    }
+
     await logMessageToLoggerChannel({
       username: "DCF Chat Moderation",
       embeds: [
         {
-          title: "Chat Report",
+          title: `Chat Report on ${CHAT_CHANNEL[channel]}`,
           color: 10181046,
           fields: [
             {
@@ -43,6 +67,7 @@ export const logChatReport = async (
               name: "Username",
               value: reportedUsername,
             },
+            { name: "URL", value: `[${CHAT_CHANNEL[channel]}](${url})` },
           ],
           footer: {
             text: `Reported by ${requestingWallet} - ${requestingUsername} `,

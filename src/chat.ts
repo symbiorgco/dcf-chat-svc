@@ -12,13 +12,23 @@ import helpfulDegens from "./helpful_degens.json";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
 
-recentChatMessages.set(0, []); // Crash
-recentChatMessages.set(1, []); // Dozer
-recentChatMessages.set(2, []); // Towers
-recentChatMessages.set(3, []); // Coinflip
-recentChatMessages.set(4, []); // Placeholder 1
-recentChatMessages.set(5, []); // Placeholder 2
-recentChatMessages.set(999, []); // Announcements
+export enum CHAT_CHANNEL {
+  CRASH = 0,
+  DOZER = 1,
+  TOWERS = 2,
+  COINFLIP = 3,
+  PLACEHOLDER1 = 4,
+  PLACEHOLDER2 = 5,
+  ANNOUNCEMENTS = 999,
+}
+
+recentChatMessages.set(CHAT_CHANNEL.CRASH, []); // Crash
+recentChatMessages.set(CHAT_CHANNEL.DOZER, []); // Dozer
+recentChatMessages.set(CHAT_CHANNEL.TOWERS, []); // Towers
+recentChatMessages.set(CHAT_CHANNEL.COINFLIP, []); // Coinflip
+recentChatMessages.set(CHAT_CHANNEL.PLACEHOLDER1, []); // Placeholder 1
+recentChatMessages.set(CHAT_CHANNEL.PLACEHOLDER2, []); // Placeholder 2
+recentChatMessages.set(CHAT_CHANNEL.ANNOUNCEMENTS, []); // Announcements
 
 const filter = new Filter({ emptyList: true });
 filter.addWords(...badWords.words);
