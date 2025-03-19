@@ -9,7 +9,7 @@ import {
 } from "./utils/types";
 import { logger } from "./logger";
 import http from "http";
-import { verifyIfCanChat, verifyJwt } from "./authentication";
+import { getRole, verifyIfCanChat, verifyJwt } from "./authentication";
 import {
   addChatMessage,
   banUser,
@@ -189,41 +189,11 @@ wssAuthenticated.on(
                   if (isTimedOut(chatProfile.walletId)) {
                     sendSystemMessage("You are timed out for 30 minutes.", ws);
                   } else {
-                    const leaderboardEntry = getLeaderboardEntry(
-                      chatProfile.walletId
-                    );
 
-                    if (leaderboardEntry && chatProfile.role === "MEMBER") {
-                      if (leaderboardEntry.volume > 10000 * 1_000_000_000) {
-                        chatProfile.role = "TIER6";
-                      } else if (
-                        leaderboardEntry.volume >
-                        5000 * 1_000_000_000
-                      ) {
-                        chatProfile.role = "TIER5";
-                      } else if (
-                        leaderboardEntry.volume >
-                        2500 * 1_000_000_000
-                      ) {
-                        chatProfile.role = "TIER4";
-                      } else if (
-                        leaderboardEntry.volume >
-                        1000 * 1_000_000_000
-                      ) {
-                        chatProfile.role = "TIER3";
-                      } else if (
-                        leaderboardEntry.volume >
-                        500 * 1_000_000_000
-                      ) {
-                        chatProfile.role = "TIER2";
-                      } else if (
-                        leaderboardEntry.volume >
-                        100 * 1_000_000_000
-                      ) {
-                        chatProfile.role = "TIER1";
-                      } else {
-                        chatProfile.role = "MEMBER";
-                      }
+                    if (chatProfile.role === "MEMBER") {
+                      //Check if needed to update role
+                      //TODO should not be needed
+                      chatProfile.role = getRole(chatProfile.walletId)
                     }
 
                     const verifiedMessage = verifyMessage(

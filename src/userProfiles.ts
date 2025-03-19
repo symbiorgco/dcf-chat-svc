@@ -1,40 +1,23 @@
 import axios from "axios";
-import { logger } from "./logger";
 
-type LeaderboardEntry = {
-  walletId: string;
-  volume: number;
-};
+let LEADERBOARD: Map<string, number> = new Map();
 
-let LEADERBOARD: LeaderboardEntry[] = [];
+export const fetchTotalVolume = async (wallet: string) => {
+  const response = await axios.get(
+    `https://api.stats.degencoinflip.com/v1/users/${wallet}/stats?timeFrame=1y`
+  );
+  const totalBetAmount = response.data.payload?.summary?.totalBetAmount;
 
-const fetchLeaderboard = async () => {
-  try {
-    await axios
-      .get("https://api.degencointracker.com/v1/monthly-volume-leaderboard")
-      .then((result) => {
-        const newLeaderboard = result.data.payload as LeaderboardEntry[];
-        if (newLeaderboard.length > 0) {
-          logger.info(`Found ${newLeaderboard.length} leaderboard entries`);
-          LEADERBOARD = newLeaderboard;
-        }
-      });
-  } catch (err) {
-    logger.error("Cannot fetch new leaderboard");
-  }
-};
+  LEADERBOARD.set(wallet, totalBetAmount);
+}
 
 export const getLeaderboardEntry = (
   walletId: string
-): LeaderboardEntry | undefined => {
-  const found = LEADERBOARD.find((entry) => entry.walletId === walletId);
+): number | undefined => {
+  const found = LEADERBOARD.get(walletId);
   if (found) {
     return found;
-  }
+  } else {
+    return 0
+  };
 };
-
-fetchLeaderboard();
-
-setInterval(() => {
-  fetchLeaderboard();
-}, 3600000); //Fetch leaderboard every hour
