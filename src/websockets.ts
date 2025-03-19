@@ -26,7 +26,6 @@ import {
   verifyMessage,
 } from "./chat";
 import NodeCache from "node-cache";
-import { getLeaderboardEntry } from "./userProfiles";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 
 const server = http.createServer();

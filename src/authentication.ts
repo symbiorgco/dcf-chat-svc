@@ -30,13 +30,11 @@ export const verifyIfCanChat = async (wallet: string, authToken: string) => {
       `https://api.stats.degencoinflip.com/v1/users/${wallet}/stats?timeFrame=1w`
     );
     const totalBetAmount = response.data.payload?.summary?.totalBetAmount;
-    if(totalBetAmount && totalBetAmount >= 0.049){
+    if (totalBetAmount && totalBetAmount >= 0.049) {
       addWalletToChat(wallet);
     }
   } catch (e) {
-    logger.error(
-      `Error fetching wallet history of player ${wallet}`
-    );
+    logger.error(`Error fetching wallet history of player ${wallet}`);
     logger.error(e);
   }
 };
@@ -93,18 +91,20 @@ export const verifyJwt = async (
 };
 
 const updateAuthCache = async (authToken: string, chatProfile: ChatProfile) => {
-  try{
+  try {
     authenticatedCache.set(authToken, chatProfile);
 
-    if(!getLeaderboardEntry(chatProfile.walletId)){
+    if (getLeaderboardEntry(chatProfile.walletId) === 0) {
       await fetchTotalVolume(chatProfile.walletId);
       chatProfile.role = getRole(chatProfile.walletId);
       authenticatedCache.set(authToken, chatProfile);
-    } 
-  } catch (err){
-    logger.info(`[Leaderboard] Update of player failed ${chatProfile.walletId}`);
+    }
+  } catch (err) {
+    logger.info(
+      `[Leaderboard] Update of player failed ${chatProfile.walletId}`
+    );
   }
-}
+};
 
 export const getRole = (wallet: string) => {
   if (isAdmin(wallet)) {
@@ -114,10 +114,8 @@ export const getRole = (wallet: string) => {
   } else if (isHelpfulDegen(wallet)) {
     return "HELPFUL_DEGEN";
   } else {
-    const leaderboardEntry = getLeaderboardEntry(
-      wallet
-    );
-  
+    const leaderboardEntry = getLeaderboardEntry(wallet);
+
     if (leaderboardEntry) {
       if (leaderboardEntry > 10000) {
         return "TIER6";
@@ -137,4 +135,4 @@ export const getRole = (wallet: string) => {
     }
   }
   return "MEMBER";
-}
+};
