@@ -1,6 +1,12 @@
 import axios from "axios";
 
-let LEADERBOARD: Map<string, number> = new Map();
+let LEADERBOARD: Map<string, LeaderboardEntry> = new Map();
+
+interface LeaderboardEntry {
+  walletId: string;
+  totalBetAmount: number;
+  timestamp: number;
+}
 
 export const fetchTotalVolume = async (wallet: string) => {
   const response = await axios.get(
@@ -8,16 +14,22 @@ export const fetchTotalVolume = async (wallet: string) => {
   );
   const totalBetAmount = response.data.payload?.summary?.totalBetAmount;
 
-  LEADERBOARD.set(wallet, totalBetAmount);
-}
+  const leaderboardEntry: LeaderboardEntry = {
+    walletId: wallet,
+    totalBetAmount: totalBetAmount,
+    timestamp: Date.now(),
+  };
+
+  LEADERBOARD.set(wallet, leaderboardEntry);
+};
 
 export const getLeaderboardEntry = (
   walletId: string
-): number | undefined => {
+): LeaderboardEntry | undefined => {
   const found = LEADERBOARD.get(walletId);
   if (found) {
     return found;
   } else {
-    return 0
-  };
+    return undefined;
+  }
 };
