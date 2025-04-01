@@ -94,7 +94,11 @@ const updateAuthCache = async (authToken: string, chatProfile: ChatProfile) => {
   try {
     authenticatedCache.set(authToken, chatProfile);
 
-    if (getLeaderboardEntry(chatProfile.walletId) === 0) {
+    const leaderboardEntry = getLeaderboardEntry(chatProfile.walletId);
+    if (
+      !leaderboardEntry ||
+      leaderboardEntry.timestamp < DateTime.now().minus({ hours: 1 }).toMillis()
+    ) {
       await fetchTotalVolume(chatProfile.walletId);
       chatProfile.role = getRole(chatProfile.walletId);
       authenticatedCache.set(authToken, chatProfile);
@@ -117,17 +121,17 @@ export const getRole = (wallet: string) => {
     const leaderboardEntry = getLeaderboardEntry(wallet);
 
     if (leaderboardEntry) {
-      if (leaderboardEntry > 10000) {
+      if (leaderboardEntry.totalBetAmount > 10000) {
         return "TIER6";
-      } else if (leaderboardEntry > 5000) {
+      } else if (leaderboardEntry.totalBetAmount > 5000) {
         return "TIER5";
-      } else if (leaderboardEntry > 2500) {
+      } else if (leaderboardEntry.totalBetAmount > 2500) {
         return "TIER4";
-      } else if (leaderboardEntry > 1000) {
+      } else if (leaderboardEntry.totalBetAmount > 1000) {
         return "TIER3";
-      } else if (leaderboardEntry > 500) {
+      } else if (leaderboardEntry.totalBetAmount > 500) {
         return "TIER2";
-      } else if (leaderboardEntry > 100) {
+      } else if (leaderboardEntry.totalBetAmount > 100) {
         return "TIER1";
       } else {
         return "MEMBER";
