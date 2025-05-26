@@ -27,6 +27,7 @@ import {
 } from "./chat";
 import NodeCache from "node-cache";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
+import { getLeaderboardEntry } from "./userProfiles";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
@@ -188,11 +189,10 @@ wssAuthenticated.on(
                   if (isTimedOut(chatProfile.walletId)) {
                     sendSystemMessage("You are timed out for 30 minutes.", ws);
                   } else {
-
                     if (chatProfile.role === "MEMBER") {
                       //Check if needed to update role
                       //TODO should not be needed
-                      chatProfile.role = getRole(chatProfile.walletId)
+                      chatProfile.role = getRole(chatProfile.walletId);
                     }
 
                     const verifiedMessage = verifyMessage(
@@ -207,13 +207,39 @@ wssAuthenticated.on(
                       );
                     } else {
                       currentId++;
+
+                      let color: CHAT_COLOR = getColorForRole("MEMBER");
+                      if (chatProfile.role === "HELPFUL_DEGEN") {
+                        const leaderboardEntry = getLeaderboardEntry(
+                          chatProfile.walletId
+                        );
+
+                        if (leaderboardEntry) {
+                          if (leaderboardEntry.totalBetAmount > 10000) {
+                            color = getColorForRole("TIER6");
+                          } else if (leaderboardEntry.totalBetAmount > 5000) {
+                            color = getColorForRole("TIER5");
+                          } else if (leaderboardEntry.totalBetAmount > 2500) {
+                            color = getColorForRole("TIER4");
+                          } else if (leaderboardEntry.totalBetAmount > 1000) {
+                            color = getColorForRole("TIER3");
+                          } else if (leaderboardEntry.totalBetAmount > 500) {
+                            color = getColorForRole("TIER2");
+                          } else if (leaderboardEntry.totalBetAmount > 100) {
+                            color = getColorForRole("TIER1");
+                          }
+                        }
+                      } else {
+                        color = getColorForRole(chatProfile.role);
+                      }
+
                       const broadcastMsg: ChatDataMessage = {
                         type: "MSG",
                         message: verifiedMessage.msg,
                         username: chatProfile.nickname,
                         wallet: chatProfile.walletId, // TODO hide for normal users?
                         timestamp: Date.now(),
-                        color: getColorForRole(chatProfile.role),
+                        color: color,
                         role: chatProfile.role,
                         id: `${idPrefix}${currentId}`,
                         channel: msg.channel,
@@ -233,7 +259,7 @@ wssAuthenticated.on(
               }
             } else {
               sendSystemMessage(
-                "Spam protection. You need to drop 10 dozer coins or play 2 crash games to chat. Refresh or try again",
+                "Spam protection. You need to play at least 0.05 SOL last 7 days to chat. Refresh or try again",
                 ws
               );
 
