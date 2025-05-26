@@ -259,7 +259,7 @@ wssAuthenticated.on(
               }
             } else {
               sendSystemMessage(
-                "Spam protection. You need to drop 10 dozer coins or play 2 crash games to chat. Refresh or try again",
+                "Spam protection. You need to play at least 0.05 SOL last 7 days to chat. Refresh or try again",
                 ws
               );
 
