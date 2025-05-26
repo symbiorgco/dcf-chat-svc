@@ -62,15 +62,17 @@ export const verifyJwt = async (
             const newChatProfile = response.data.payload.profile as ChatProfile;
 
             logger.info(
-              `[JWT] New user authenticated ${newChatProfile.walletId} Nickname: ${newChatProfile.nickname}`
+              `[JWT] New user authenticated ${walletId} Nickname: ${newChatProfile.nickname}`
             );
 
-            newChatProfile.role = getRole(newChatProfile.walletId);
+            //Ensure walletid is set
+            newChatProfile.walletId = walletId;
+            newChatProfile.role = getRole(walletId);
             newChatProfile.authToken = authToken;
 
             updateAuthCache(authToken, newChatProfile);
 
-            verifyIfCanChat(newChatProfile.walletId, authToken);
+            verifyIfCanChat(walletId, authToken);
 
             return newChatProfile;
           } else {
