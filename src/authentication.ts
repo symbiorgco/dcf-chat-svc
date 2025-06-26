@@ -80,9 +80,9 @@ export const verifyJwt = async (
             return undefined;
           }
         })
-        .catch((err) => {
+        .catch(() => {
           logger.info(`[JWT] user connection failure ${walletId}`);
-          logger.error(err);
+          //logger.error(err);
           return undefined;
         });
     }
