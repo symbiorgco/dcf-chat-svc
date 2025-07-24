@@ -66,7 +66,10 @@ export const wssViewers = new WebSocketServer({
   maxPayload: 512,
   autoPong: false,
 });
+
 export let viewers = 0;
+const playerList = new Map<number, ChatProfile>();
+export let playerProfiles = [];
 
 export const broadcastMessage = (msg: Buffer) => {
   wssAuthenticated.clients.forEach(async (client) => {
@@ -151,13 +154,18 @@ const sendSystemMessage = (msg: string, ws: any) => {
   });
 };
 
+let uniqueId = 0;
+
 wssAuthenticated.on(
   "connection",
   function connection(ws, request, chatProfile: ChatProfile) {
+    uniqueId++;
+    const playerId = uniqueId;
     try {
       logger.info(
-        `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname}`
+        `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`
       );
+      playerList.set(playerId, chatProfile);
       const chatProfileMSG: ChatDataMessage = {
         type: "PROFILE",
         message: chatProfile.role,
@@ -175,6 +183,18 @@ wssAuthenticated.on(
             });
           }
         } catch (err) {}
+      });
+      ws.on("close", function close() {
+        logger.info(
+          `[WS] Player disconnected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`
+        );
+        playerList.delete(playerId);
+      });
+      ws.on("error", function error(err) {
+        logger.error(
+          `[WS] Player error ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`
+        );
+        playerList.delete(playerId);
       });
       ws.on("message", function message(data) {
         try {
@@ -342,14 +362,38 @@ wssAuthenticated.on(
         }
       });
     } catch (err) {
+      playerList.delete(playerId);
       logger.error(err);
     }
   }
 );
 
 const updateViewers = () => {
-  viewers = wssAuthenticated.clients.size + wssViewers.clients.size;
-  logger.info(`[STATS] Total connected clients: ${viewers}`);
+  viewers = wssAuthenticated.clients.size + wssViewers.clients.size + 8; // +8 for bots
+  try {
+    const players = Array.from(playerList.values());
+    const filteredArr = players.reduce((acc, current) => {
+      const x = acc.find((item) => item.walletId === current.walletId);
+      if (!x) {
+        return acc.concat([current]);
+      } else {
+        return acc;
+      }
+    }, []);
+    playerProfiles = filteredArr.map((profile) => {
+      return {
+        nickname: profile.nickname,
+        role: profile.role,
+        profileImageUrl: profile.profileImageUrl,
+      };
+    });
+
+    logger.info(
+      `[STATS] Total connected clients: ${viewers} - Players: ${filteredArr.length}`
+    );
+  } catch (err) {
+    logger.error("Error updating viewers: ", err);
+  }
 };
 
 const heartbeat = async () => {
