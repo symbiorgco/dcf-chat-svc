@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { sendAnnouncement, viewers } from "../websockets";
+import { playerProfiles, sendAnnouncement, viewers } from "../websockets";
 import {
   bannedUsers,
   isAdmin,
@@ -22,7 +22,7 @@ export const router = express.Router();
 
 router.get("/viewers", async (req, res) => {
   try {
-    res.json({ completed: true, viewers: viewers });
+    res.json({ completed: true, viewers: viewers, players: playerProfiles });
   } catch (err) {
     console.log(err);
     res.json({ error: true });
