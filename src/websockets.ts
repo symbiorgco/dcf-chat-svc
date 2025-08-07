@@ -21,6 +21,7 @@ import {
   isHelpfulDegen,
   isMod,
   isTimedOut,
+  recentChatMessages,
   removeChatMessage,
   timeoutUser,
   unbanUser,
@@ -161,15 +162,44 @@ const sendSystemMessage = (msg: string, ws: any, systemUsername?: string) => {
 
 const handleCommand = async (command: string, ws: WebSocket) => {
   try {
-    const subCommand = command.substring(1);
-    sendSystemMessage(`Command: ${subCommand}`, ws, "Baby Coin");
-    const response = await askAI(subCommand);
-    if (response && response.text) {
-      const reply = response.text;
-      console.log("AI Response: ", reply);
-      sendSystemMessage(reply, ws, "Baby Coin");
+    if (command.startsWith("q")) {
+      const subCommand = command.substring(1).trim();
+      //Question command
+      sendSystemMessage(`Q: ${subCommand}`, ws, "You");
+      const response = await askAI(subCommand);
+      if (response && response.text) {
+        const reply = response.text;
+        console.log(`Used /q: ${subCommand} - AI Response: ${reply}`);
+        sendSystemMessage(reply, ws, "Baby Coin");
+      } else {
+        sendSystemMessage("Unable to handle command", ws, "Baby Coin");
+      }
+    } else if (command.startsWith("chat")) {
+      const subCommand = command.substring(4).trim();
+
+      //Chat command
+      sendSystemMessage(`used /chat: ${subCommand}`, ws, "You");
+
+      const parsedChatMessages = recentChatMessages.get(0).map((msg) => ({
+        id: msg.id,
+        username: msg.username,
+        message: msg.message,
+      }));
+
+      const response = await askAI(
+        subCommand +
+          " And provide the id if applicable. " +
+          JSON.stringify(parsedChatMessages)
+      );
+      if (response && response.text) {
+        const reply = response.text;
+        console.log(`A: used /chat: ${subCommand} - AI Response: ${reply}`);
+        sendAnnouncement(reply, "Baby Coin", true);
+      } else {
+        sendSystemMessage("Unable to handle command", ws, "Baby Coin");
+      }
     } else {
-      sendSystemMessage("Unable to handle command", ws, "Baby Coin");
+      sendSystemMessage("Unknown command", ws, "Baby Coin");
     }
   } catch (err) {
     logger.error("Error handling command: ", err);
@@ -256,7 +286,7 @@ wssAuthenticated.on(
                       ) {
                         // Only admins can use commands
                         // Handle command async
-                        handleCommand(verifiedMessage.msg, ws);
+                        handleCommand(verifiedMessage.msg.substring(1), ws);
                       } else {
                         // Handle normal message
                         currentId++;
