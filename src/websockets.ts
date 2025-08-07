@@ -107,13 +107,14 @@ export const sendAnnouncement = (
   const announcement: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg,
-    username: "SYSTEM",
+    username: "Baby Coin",
     wallet,
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}`,
     role: "",
     channel: channel,
+    icon: "https://app.degencoinflip.com/logo192.png",
   };
 
   const msgBuffer = Buffer.from(JSON.stringify(announcement));
@@ -136,18 +137,19 @@ export const sendAnnouncement = (
   }
 };
 
-const sendSystemMessage = (msg: string, ws: any) => {
+const sendSystemMessage = (msg: string, ws: any, systemUsername?: string) => {
   currentId++;
   const errorMsg: ChatDataMessage = {
-    type: "MSG",
+    type: "ANNOUNCEMENT",
     message: msg,
-    username: "SYSTEM",
+    username: systemUsername || "SYSTEM",
     wallet: "SYSTEM",
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}B`,
     role: "SYSTEM",
     channel: 999,
+    icon: "https://app.degencoinflip.com/logo192.png",
   };
   ws.send(Buffer.from(JSON.stringify(errorMsg)), {
     binary: false,
@@ -220,55 +222,66 @@ wssAuthenticated.on(
                       isAdmin(chatProfile.walletId) ||
                         isMod(chatProfile.walletId)
                     );
+
                     if (verifiedMessage.error) {
                       sendSystemMessage(
                         `Error sending your message: ${verifiedMessage.errorMessage}`,
                         ws
                       );
                     } else {
-                      currentId++;
-
-                      let color: CHAT_COLOR = getColorForRole("MEMBER");
-                      if (chatProfile.role === "HELPFUL_DEGEN") {
-                        const leaderboardEntry = getLeaderboardEntry(
-                          chatProfile.walletId
+                      if (verifiedMessage.msg.startsWith("/")) {
+                        // Handle command
+                        sendSystemMessage(
+                          "TODO handling command",
+                          ws,
+                          "Baby Coin"
                         );
-
-                        if (leaderboardEntry) {
-                          if (leaderboardEntry.totalBetAmount > 10000) {
-                            color = getColorForRole("TIER6");
-                          } else if (leaderboardEntry.totalBetAmount > 5000) {
-                            color = getColorForRole("TIER5");
-                          } else if (leaderboardEntry.totalBetAmount > 2500) {
-                            color = getColorForRole("TIER4");
-                          } else if (leaderboardEntry.totalBetAmount > 1000) {
-                            color = getColorForRole("TIER3");
-                          } else if (leaderboardEntry.totalBetAmount > 500) {
-                            color = getColorForRole("TIER2");
-                          } else if (leaderboardEntry.totalBetAmount > 100) {
-                            color = getColorForRole("TIER1");
-                          }
-                        }
                       } else {
-                        color = getColorForRole(chatProfile.role);
-                      }
+                        // Handle normal message
+                        currentId++;
 
-                      const broadcastMsg: ChatDataMessage = {
-                        type: "MSG",
-                        message: verifiedMessage.msg,
-                        username: chatProfile.nickname,
-                        wallet: chatProfile.walletId, // TODO hide for normal users?
-                        timestamp: Date.now(),
-                        color: color,
-                        role: chatProfile.role,
-                        id: `${idPrefix}${currentId}`,
-                        channel: msg.channel,
-                        icon: chatProfile.profileImageUrl,
-                      };
-                      addChatMessage(broadcastMsg, msg.channel);
-                      broadcastMessage(
-                        Buffer.from(JSON.stringify(broadcastMsg))
-                      );
+                        let color: CHAT_COLOR = getColorForRole("MEMBER");
+                        if (chatProfile.role === "HELPFUL_DEGEN") {
+                          const leaderboardEntry = getLeaderboardEntry(
+                            chatProfile.walletId
+                          );
+
+                          if (leaderboardEntry) {
+                            if (leaderboardEntry.totalBetAmount > 10000) {
+                              color = getColorForRole("TIER6");
+                            } else if (leaderboardEntry.totalBetAmount > 5000) {
+                              color = getColorForRole("TIER5");
+                            } else if (leaderboardEntry.totalBetAmount > 2500) {
+                              color = getColorForRole("TIER4");
+                            } else if (leaderboardEntry.totalBetAmount > 1000) {
+                              color = getColorForRole("TIER3");
+                            } else if (leaderboardEntry.totalBetAmount > 500) {
+                              color = getColorForRole("TIER2");
+                            } else if (leaderboardEntry.totalBetAmount > 100) {
+                              color = getColorForRole("TIER1");
+                            }
+                          }
+                        } else {
+                          color = getColorForRole(chatProfile.role);
+                        }
+
+                        const broadcastMsg: ChatDataMessage = {
+                          type: "MSG",
+                          message: verifiedMessage.msg,
+                          username: chatProfile.nickname,
+                          wallet: chatProfile.walletId, // TODO hide for normal users?
+                          timestamp: Date.now(),
+                          color: color,
+                          role: chatProfile.role,
+                          id: `${idPrefix}${currentId}`,
+                          channel: msg.channel,
+                          icon: chatProfile.profileImageUrl,
+                        };
+                        addChatMessage(broadcastMsg, msg.channel);
+                        broadcastMessage(
+                          Buffer.from(JSON.stringify(broadcastMsg))
+                        );
+                      }
                     }
                   }
                 } else {

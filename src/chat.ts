@@ -5,7 +5,7 @@ import { logger } from "./logger";
 import fs from "fs";
 import NodeCache from "node-cache";
 
-const MAX_MESSAGES_HISTORY = 60;
+const MAX_MESSAGES_HISTORY = 75;
 import admins from "./admins.json";
 import mods from "./mods.json";
 import helpfulDegens from "./helpful_degens.json";
