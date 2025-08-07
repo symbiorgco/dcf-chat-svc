@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
+import { askAI } from "./plugins/ai";
 import {
   CHAT_COLOR,
   ChatDataMessage,
@@ -33,7 +34,6 @@ const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
   noServer: true,
   maxPayload: 512,
-  autoPong: false,
 });
 
 server.on("upgrade", async function upgrade(request, socket, head) {
@@ -64,7 +64,6 @@ server.on("upgrade", async function upgrade(request, socket, head) {
 export const wssViewers = new WebSocketServer({
   port: Number.parseInt(process.env.PORT_WS_VIEW),
   maxPayload: 512,
-  autoPong: false,
 });
 
 export let viewers = 0;
@@ -141,7 +140,7 @@ const sendSystemMessage = (msg: string, ws: any, systemUsername?: string) => {
   currentId++;
   const errorMsg: ChatDataMessage = {
     type: "ANNOUNCEMENT",
-    message: msg,
+    message: msg || " ",
     username: systemUsername || "SYSTEM",
     wallet: "SYSTEM",
     color: CHAT_COLOR.ORANGE,
@@ -151,9 +150,31 @@ const sendSystemMessage = (msg: string, ws: any, systemUsername?: string) => {
     channel: 999,
     icon: "https://app.degencoinflip.com/logo192.png",
   };
-  ws.send(Buffer.from(JSON.stringify(errorMsg)), {
-    binary: false,
-  });
+  try {
+    ws.send(Buffer.from(JSON.stringify(errorMsg)), {
+      binary: false,
+    });
+  } catch (err) {
+    logger.error("Error sending system message: ", err);
+  }
+};
+
+const handleCommand = async (command: string, ws: WebSocket) => {
+  try {
+    const subCommand = command.substring(1);
+    sendSystemMessage(`Command: ${subCommand}`, ws, "Baby Coin");
+    const response = await askAI(subCommand);
+    if (response && response.text) {
+      const reply = response.text;
+      console.log("AI Response: ", reply);
+      sendSystemMessage(reply, ws, "Baby Coin");
+    } else {
+      sendSystemMessage("Unable to handle command", ws, "Baby Coin");
+    }
+  } catch (err) {
+    logger.error("Error handling command: ", err);
+    sendSystemMessage("Error handling command", ws, "Baby Coin");
+  }
 };
 
 let uniqueId = 0;
@@ -229,13 +250,13 @@ wssAuthenticated.on(
                         ws
                       );
                     } else {
-                      if (verifiedMessage.msg.startsWith("/")) {
-                        // Handle command
-                        sendSystemMessage(
-                          "TODO handling command",
-                          ws,
-                          "Baby Coin"
-                        );
+                      if (
+                        isAdmin(chatProfile.walletId) &&
+                        verifiedMessage.msg.startsWith("/")
+                      ) {
+                        // Only admins can use commands
+                        // Handle command async
+                        handleCommand(verifiedMessage.msg, ws);
                       } else {
                         // Handle normal message
                         currentId++;

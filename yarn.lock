@@ -2,6 +2,11 @@
 # yarn lockfile v1
 
 
+"@anthropic-ai/sdk@^0.58.0":
+  "integrity" "sha512-wF8w+LB0AlKVLYUQho0nbK0uDv0K5Cgb92dbh8213t4roilnQ9Tm6zndheIaUxQdoEAeb0uoOT+GkkoIkqD8+A=="
+  "resolved" "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.58.0.tgz"
+  "version" "0.58.0"
+
 "@axiomhq/axiom-node@^0.12.0":
   "integrity" "sha512-998jnkwSCzKk4oTqiWfHIeW18yj7LZu5+srTq72nLXaEZ5rrGMqKPx5W96hs8u9TeOjFxGBsfJCStEIVnrru1g=="
   "resolved" "https://registry.npmjs.org/@axiomhq/axiom-node/-/axiom-node-0.12.0.tgz"
