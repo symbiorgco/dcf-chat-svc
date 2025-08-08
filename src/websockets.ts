@@ -30,6 +30,7 @@ import {
 import NodeCache from "node-cache";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 import { getLeaderboardEntry } from "./userProfiles";
+import axios from "axios";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
@@ -112,7 +113,7 @@ export const sendAnnouncement = (
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}`,
-    role: "",
+    role: "BOT",
     channel: channel,
     icon: "https://app.degencoinflip.com/logo192.png",
   };
@@ -137,17 +138,17 @@ export const sendAnnouncement = (
   }
 };
 
-const sendSystemMessage = (msg: string, ws: any, systemUsername?: string) => {
+const sendSystemMessage = (msg: string, ws: any, bot: boolean = false) => {
   currentId++;
   const errorMsg: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg || " ",
-    username: systemUsername || "SYSTEM",
-    wallet: "SYSTEM",
+    username: bot ? "Baby Coin" : "SYSTEM",
+    wallet: bot ? "BOT" : "SYSTEM",
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}B`,
-    role: "SYSTEM",
+    role: "PRIVATE",
     channel: 999,
     icon: "https://app.degencoinflip.com/logo192.png",
   };
@@ -160,50 +161,194 @@ const sendSystemMessage = (msg: string, ws: any, systemUsername?: string) => {
   }
 };
 
-const handleCommand = async (command: string, ws: WebSocket) => {
+const broadcastBotMessage = (msg: string, channel: number) => {
+  try {
+    currentId++;
+    const broadcastMsg: ChatDataMessage = {
+      type: "MSG",
+      message: msg,
+      username: "Baby Coin",
+      wallet: "BOT", // TODO hide for normal users?
+      timestamp: Date.now(),
+      color: CHAT_COLOR.ORANGE,
+      role: "BOT",
+      id: `${idPrefix}${currentId}`,
+      channel: channel,
+      icon: "https://app.degencoinflip.com/logo192.png",
+    };
+
+    addChatMessage(broadcastMsg, channel);
+    broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+  } catch (err) {
+    logger.error("Error sending system message: ", err);
+  }
+};
+
+export interface GameResult {
+  createdAt: string;
+  gameNumber: number;
+  roomId: number;
+  roundId: number;
+  playerCount: number;
+  players: Record<string, Player>;
+  gameResult: number | string | null;
+  hash: string;
+}
+
+export interface Player {
+  lamports: string;
+  reward: string;
+  choice: string;
+  pubkey: string;
+  username: string;
+}
+
+const handleCommand = async (
+  command: string,
+  ws: WebSocket,
+  channel: number,
+  chatProfile: ChatProfile
+) => {
   try {
     if (command.startsWith("q")) {
       const subCommand = command.substring(1).trim();
       //Question command
-      sendSystemMessage(`Q: ${subCommand}`, ws, "You");
-      const response = await askAI(subCommand);
+      //sendSystemMessage(`You asked Q: ${subCommand}`, ws, true);
+
+      /////// TODO make more generic
+      currentId++;
+      let color: CHAT_COLOR = getColorForRole("MEMBER");
+      if (chatProfile.role === "HELPFUL_DEGEN") {
+        const leaderboardEntry = getLeaderboardEntry(chatProfile.walletId);
+
+        if (leaderboardEntry) {
+          if (leaderboardEntry.totalBetAmount > 10000) {
+            color = getColorForRole("TIER6");
+          } else if (leaderboardEntry.totalBetAmount > 5000) {
+            color = getColorForRole("TIER5");
+          } else if (leaderboardEntry.totalBetAmount > 2500) {
+            color = getColorForRole("TIER4");
+          } else if (leaderboardEntry.totalBetAmount > 1000) {
+            color = getColorForRole("TIER3");
+          } else if (leaderboardEntry.totalBetAmount > 500) {
+            color = getColorForRole("TIER2");
+          } else if (leaderboardEntry.totalBetAmount > 100) {
+            color = getColorForRole("TIER1");
+          }
+        }
+      } else {
+        color = getColorForRole(chatProfile.role);
+      }
+      const broadcastMsg: ChatDataMessage = {
+        type: "MSG",
+        message: `Baby Coin, ${subCommand}`,
+        username: chatProfile.nickname,
+        wallet: chatProfile.walletId, // TODO hide for normal users?
+        timestamp: Date.now(),
+        color: color,
+        role: chatProfile.role,
+        id: `${idPrefix}${currentId}`,
+        channel: channel,
+        icon: chatProfile.profileImageUrl,
+      };
+
+      addChatMessage(broadcastMsg, channel);
+      broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+
+      /// END TODO
+
+      const response = await askAI(
+        subCommand + " and limit your reply to max 175 characters."
+      );
       if (response && response.text) {
         const reply = response.text;
         console.log(`Used /q: ${subCommand} - AI Response: ${reply}`);
-        sendSystemMessage(reply, ws, "Baby Coin");
+        broadcastBotMessage(reply, channel);
       } else {
-        sendSystemMessage("Unable to handle command", ws, "Baby Coin");
+        sendSystemMessage("Unable to handle command", ws, true);
       }
     } else if (command.startsWith("chat")) {
       const subCommand = command.substring(4).trim();
 
       //Chat command
-      sendSystemMessage(`used /chat: ${subCommand}`, ws, "You");
+      sendSystemMessage(`used /chat: ${subCommand}`, ws, true);
 
       const parsedChatMessages = recentChatMessages.get(0).map((msg) => ({
         id: msg.id,
+        wallet: msg.wallet.slice(0, 8),
         username: msg.username,
         message: msg.message,
       }));
 
       const response = await askAI(
         subCommand +
-          " And provide the id if applicable. " +
+          " And provide 1 wallet ID if applicable. " +
           JSON.stringify(parsedChatMessages)
       );
       if (response && response.text) {
         const reply = response.text;
         console.log(`A: used /chat: ${subCommand} - AI Response: ${reply}`);
-        sendAnnouncement(reply, "Baby Coin", true);
+        //broadcastBotMessage(reply, channel);
+        sendSystemMessage(reply, ws, true);
       } else {
-        sendSystemMessage("Unable to handle command", ws, "Baby Coin");
+        sendSystemMessage("Unable to handle command", ws, true);
+      }
+    } else if (command.startsWith("game")) {
+      //Game history
+      const subCommand = command.substring(4).trim();
+
+      //Game command
+      sendSystemMessage(`used /game: ${subCommand}`, ws, true);
+
+      const response = await axios.get(
+        `https://api.dealer.degencoinflip.com/v1/game/2/room/1/rounds?limit=300`
+      );
+      const totalGames = response.data.payload as GameResult[];
+
+      const parsedGames = totalGames.map((game) => {
+        if (!game.gameResult) return;
+        return {
+          mutliplier: game.gameResult,
+          players: Object.values(game.players).map((player) => ({
+            pubkey: player.pubkey.slice(0, 8),
+            result:
+              (Number.parseFloat(
+                (
+                  BigInt(player.reward.split(".")[0]) / BigInt(1_000_000)
+                ).toString()
+              ) -
+                Number.parseFloat(
+                  (
+                    BigInt(player.lamports.split(".")[0]) / BigInt(1_000_000)
+                  ).toString()
+                )) /
+              1000,
+            username: player.username,
+          })),
+          roundId: game.roundId,
+        };
+      });
+
+      const responseAI = await askAI(
+        subCommand +
+          ". And provide 1 wallet ID if applicable. This is the data of last 300 rounds of the crash game: " +
+          JSON.stringify(parsedGames)
+      );
+      if (responseAI && responseAI.text) {
+        const reply = responseAI.text;
+        console.log(`A: used /game: ${subCommand} - AI Response: ${reply}`);
+        //broadcastBotMessage(reply, channel);
+        sendSystemMessage(reply, ws, true);
+      } else {
+        sendSystemMessage("Unable to handle command", ws, true);
       }
     } else {
-      sendSystemMessage("Unknown command", ws, "Baby Coin");
+      sendSystemMessage("Unknown command", ws, true);
     }
   } catch (err) {
+    console.log("Error handling command: ", err);
     logger.error("Error handling command: ", err);
-    sendSystemMessage("Error handling command", ws, "Baby Coin");
+    sendSystemMessage("Error handling command", ws, true);
   }
 };
 
@@ -286,7 +431,12 @@ wssAuthenticated.on(
                       ) {
                         // Only admins can use commands
                         // Handle command async
-                        handleCommand(verifiedMessage.msg.substring(1), ws);
+                        handleCommand(
+                          verifiedMessage.msg.substring(1),
+                          ws,
+                          msg.channel,
+                          chatProfile
+                        );
                       } else {
                         // Handle normal message
                         currentId++;
