@@ -301,7 +301,7 @@ const handleCommand = async (
       sendSystemMessage(`used /game: ${subCommand}`, ws, true);
 
       const response = await axios.get(
-        `https://api.dealer.degencoinflip.com/v1/game/2/room/1/rounds?limit=300`
+        `https://api.dealer.degencoinflip.com/v1/game/2/room/1/rounds?limit=100`
       );
       const totalGames = response.data.payload as GameResult[];
 
@@ -311,6 +311,7 @@ const handleCommand = async (
           mutliplier: game.gameResult,
           players: Object.values(game.players).map((player) => ({
             pubkey: player.pubkey.slice(0, 8),
+            selection: player.choice,
             result:
               (Number.parseFloat(
                 (
@@ -331,7 +332,7 @@ const handleCommand = async (
 
       const responseAI = await askAI(
         subCommand +
-          ". And provide 1 wallet ID if applicable. This is the data of last 300 rounds of the crash game: " +
+          ". And provide 1 wallet ID if applicable. This is the data of last 100 rounds of the crash game: " +
           JSON.stringify(parsedGames)
       );
       if (responseAI && responseAI.text) {
