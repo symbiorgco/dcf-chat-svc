@@ -45,7 +45,7 @@ const timedOutCache = new NodeCache({
 });
 
 const allowedUsers = new NodeCache({
-  stdTTL: 43200,
+  stdTTL: 172800,
   checkperiod: 3600,
 });
 
