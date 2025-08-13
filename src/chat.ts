@@ -9,6 +9,7 @@ const MAX_MESSAGES_HISTORY = 75;
 import admins from "./admins.json";
 import mods from "./mods.json";
 import helpfulDegens from "./helpful_degens.json";
+import { recentChatMessagesForAI } from "./plugins/ai";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
 
@@ -45,7 +46,7 @@ const timedOutCache = new NodeCache({
 });
 
 const allowedUsers = new NodeCache({
-  stdTTL: 172800,
+  stdTTL: 300800,
   checkperiod: 3600,
 });
 
@@ -150,6 +151,7 @@ export const addChatMessage = (msg: ChatDataMessage, channel: number = 0) => {
     recentMsg.shift();
   }
   recentMsg.push(msg);
+  recentChatMessagesForAI.push(msg);
   logger.info(
     `CHAT: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`
   );

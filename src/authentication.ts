@@ -31,20 +31,24 @@ export const verifyIfCanChat = async (wallet: string) => {
     //always add and keep high players
     if (leaderboardEntry && leaderboardEntry.totalBetAmount >= 250) {
       addWalletToChat(wallet);
-      return;
+      return true;
     }
 
     const response = await axios.get(
       `https://api.stats.degencoinflip.com/v1/users/${wallet}/stats?timeFrame=1w`
     );
     const totalBetAmount = response.data.payload?.summary?.totalBetAmount;
-    if (totalBetAmount && totalBetAmount >= 0.049) {
+    if (totalBetAmount && totalBetAmount >= 0.009) {
       addWalletToChat(wallet);
+      return true;
     }
   } catch (e) {
     logger.error(`Error fetching wallet history of player ${wallet}`);
     logger.error(e);
+    return false;
   }
+
+  return false;
 };
 
 export const verifyJwt = async (
@@ -92,9 +96,19 @@ export const verifyJwt = async (
         newChatProfile.role = getRole(walletId);
         newChatProfile.authToken = authToken;
 
+        //No await to avoid
         verifyIfCanChat(walletId);
-        await updateAuthCache(authToken, newChatProfile);
+        const updateAuthCachePromise = updateAuthCache(
+          authToken,
+          newChatProfile
+        );
 
+        //Wait 5 sec to give a bit time to fetch the profile
+        const timeoutPromise = await new Promise((resolve) =>
+          setTimeout(resolve, 5000)
+        );
+
+        await Promise.race([timeoutPromise, updateAuthCachePromise]);
         return authenticatedCache.get(authToken);
       }
 
@@ -112,7 +126,7 @@ const updateAuthCache = async (authToken: string, chatProfile: ChatProfile) => {
     if (
       !leaderboardEntry ||
       leaderboardEntry.timestamp <
-        DateTime.now().minus({ minutes: 10 }).toMillis()
+        DateTime.now().minus({ minutes: 5 }).toMillis()
     ) {
       await fetchTotalVolume(chatProfile.walletId);
       chatProfile.role = getRole(chatProfile.walletId);

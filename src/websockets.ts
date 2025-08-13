@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
 import { askAI } from "./plugins/ai";
+import { fetchPersonasProfile } from "./plugins/personas";
+import { grantRFP, pickPlayersForRFP } from "./plugins/rfp";
 import {
   CHAT_COLOR,
   ChatDataMessage,
@@ -217,35 +219,14 @@ const handleCommand = async (
 
       /////// TODO make more generic
       currentId++;
-      let color: CHAT_COLOR = getColorForRole("MEMBER");
-      if (chatProfile.role === "HELPFUL_DEGEN") {
-        const leaderboardEntry = getLeaderboardEntry(chatProfile.walletId);
 
-        if (leaderboardEntry) {
-          if (leaderboardEntry.totalBetAmount > 10000) {
-            color = getColorForRole("TIER6");
-          } else if (leaderboardEntry.totalBetAmount > 5000) {
-            color = getColorForRole("TIER5");
-          } else if (leaderboardEntry.totalBetAmount > 2500) {
-            color = getColorForRole("TIER4");
-          } else if (leaderboardEntry.totalBetAmount > 1000) {
-            color = getColorForRole("TIER3");
-          } else if (leaderboardEntry.totalBetAmount > 500) {
-            color = getColorForRole("TIER2");
-          } else if (leaderboardEntry.totalBetAmount > 100) {
-            color = getColorForRole("TIER1");
-          }
-        }
-      } else {
-        color = getColorForRole(chatProfile.role);
-      }
       const broadcastMsg: ChatDataMessage = {
         type: "MSG",
         message: `Baby Coin, ${subCommand}`,
         username: chatProfile.nickname,
         wallet: chatProfile.walletId, // TODO hide for normal users?
         timestamp: Date.now(),
-        color: color,
+        color: getColorForRole("MEMBER"),
         role: chatProfile.role,
         id: `${idPrefix}${currentId}`,
         channel: channel,
@@ -343,6 +324,47 @@ const handleCommand = async (
       } else {
         sendSystemMessage("Unable to handle command", ws, true);
       }
+    } else if (command.startsWith("rfp")) {
+      sendSystemMessage(`Requested manual RFP sending!`, ws, true);
+
+      const playerList = await pickPlayersForRFP();
+
+      const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
+
+      let shuffled = [
+        ...new Set(
+          playerList
+            .map((value) => ({ value, sort: Math.random() }))
+            .sort((a, b) => a.sort - b.sort)
+            .map(({ value }) => value)
+            .slice(0, amountOfPlayers)
+        ),
+      ];
+
+      grantRFP(shuffled, 0.01);
+
+      if (shuffled.length > 0) {
+        sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
+
+        // Get player names
+        const playerNames = (
+          await Promise.all(
+            shuffled.map((walletId) => fetchPersonasProfile(walletId))
+          )
+        ).map((profile) => {
+          if (profile) {
+            return profile.nickname;
+          }
+          return "UNKNOWN";
+        });
+
+        broadcastBotMessage(
+          `Let it rain! Sending RFPs to ${
+            shuffled.length
+          } players: ${playerNames.join(" and ")}`,
+          channel
+        );
+      }
     } else {
       sendSystemMessage("Unknown command", ws, true);
     }
@@ -354,6 +376,121 @@ const handleCommand = async (
 };
 
 let uniqueId = 0;
+
+const handleSendMessage = async (
+  chatProfile: ChatProfile,
+  ws: any,
+  message: ChatDataRequestMessage
+) => {
+  intervalCache.set(chatProfile.walletId, true);
+
+  if (message.channel > 998) {
+    return;
+  }
+
+  if (!isAllowedToChat(chatProfile.walletId)) {
+    if (!(await verifyIfCanChat(chatProfile.walletId))) {
+      sendSystemMessage(
+        "Spam protection. You need to play at least 0.01 SOL last 7 days to chat. Refresh or try again",
+        ws
+      );
+
+      // TODO if not able to chat, dont destroy the message yet
+
+      verifyIfCanChat(chatProfile.walletId);
+      return;
+    }
+  }
+
+  // Check if allowed to chat
+  if (!isBanned(chatProfile.walletId)) {
+    if (message.message.length > 0) {
+      if (isTimedOut(chatProfile.walletId)) {
+        sendSystemMessage("You are timed out for 30 minutes.", ws);
+      } else {
+        if (chatProfile.role === "MEMBER") {
+          //Check if needed to update role
+          //TODO should not be needed
+          chatProfile.role = getRole(chatProfile.walletId);
+        }
+
+        const verifiedMessage = verifyMessage(
+          message.message,
+          isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)
+        );
+
+        if (verifiedMessage.error) {
+          sendSystemMessage(
+            `Error sending your message: ${verifiedMessage.errorMessage}`,
+            ws
+          );
+        } else {
+          if (
+            isAdmin(chatProfile.walletId) &&
+            verifiedMessage.msg.startsWith("/")
+          ) {
+            // Only admins can use commands
+            // Handle command async
+            handleCommand(
+              verifiedMessage.msg.substring(1),
+              ws,
+              message.channel,
+              chatProfile
+            );
+            // DISABLED FOR NOW
+          } else {
+            // Handle normal message
+            currentId++;
+
+            let color: CHAT_COLOR = getColorForRole("MEMBER");
+            if (chatProfile.role === "HELPFUL_DEGEN") {
+              const leaderboardEntry = getLeaderboardEntry(
+                chatProfile.walletId
+              );
+
+              if (leaderboardEntry) {
+                if (leaderboardEntry.totalBetAmount > 10000) {
+                  color = getColorForRole("TIER6");
+                } else if (leaderboardEntry.totalBetAmount > 5000) {
+                  color = getColorForRole("TIER5");
+                } else if (leaderboardEntry.totalBetAmount > 2500) {
+                  color = getColorForRole("TIER4");
+                } else if (leaderboardEntry.totalBetAmount > 1000) {
+                  color = getColorForRole("TIER3");
+                } else if (leaderboardEntry.totalBetAmount > 500) {
+                  color = getColorForRole("TIER2");
+                } else if (leaderboardEntry.totalBetAmount > 100) {
+                  color = getColorForRole("TIER1");
+                }
+              }
+            } else {
+              color = getColorForRole(chatProfile.role);
+            }
+
+            const broadcastMsg: ChatDataMessage = {
+              type: "MSG",
+              message: verifiedMessage.msg,
+              username: chatProfile.nickname,
+              wallet: chatProfile.walletId, // TODO hide for normal users?
+              timestamp: Date.now(),
+              color: color,
+              role: chatProfile.role,
+              id: `${idPrefix}${currentId}`,
+              channel: message.channel,
+              icon: chatProfile.profileImageUrl,
+            };
+            addChatMessage(broadcastMsg, message.channel);
+            broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+          }
+        }
+      }
+    } else {
+      logger.info("Received length 0");
+    }
+  } else {
+    sendSystemMessage("You are banned.", ws);
+  }
+};
 
 wssAuthenticated.on(
   "connection",
@@ -399,107 +536,7 @@ wssAuthenticated.on(
         try {
           const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
           if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
-            intervalCache.set(chatProfile.walletId, true);
-
-            // Check if allowed to chat
-            if (isAllowedToChat(chatProfile.walletId)) {
-              if (!isBanned(chatProfile.walletId)) {
-                if (msg.message.length > 0) {
-                  if (isTimedOut(chatProfile.walletId)) {
-                    sendSystemMessage("You are timed out for 30 minutes.", ws);
-                  } else {
-                    if (chatProfile.role === "MEMBER") {
-                      //Check if needed to update role
-                      //TODO should not be needed
-                      chatProfile.role = getRole(chatProfile.walletId);
-                    }
-
-                    const verifiedMessage = verifyMessage(
-                      msg.message,
-                      isAdmin(chatProfile.walletId) ||
-                        isMod(chatProfile.walletId)
-                    );
-
-                    if (verifiedMessage.error) {
-                      sendSystemMessage(
-                        `Error sending your message: ${verifiedMessage.errorMessage}`,
-                        ws
-                      );
-                    } else {
-                      if (
-                        isAdmin(chatProfile.walletId) &&
-                        verifiedMessage.msg.startsWith("/")
-                      ) {
-                        // Only admins can use commands
-                        // Handle command async
-                        handleCommand(
-                          verifiedMessage.msg.substring(1),
-                          ws,
-                          msg.channel,
-                          chatProfile
-                        );
-                      } else {
-                        // Handle normal message
-                        currentId++;
-
-                        let color: CHAT_COLOR = getColorForRole("MEMBER");
-                        if (chatProfile.role === "HELPFUL_DEGEN") {
-                          const leaderboardEntry = getLeaderboardEntry(
-                            chatProfile.walletId
-                          );
-
-                          if (leaderboardEntry) {
-                            if (leaderboardEntry.totalBetAmount > 10000) {
-                              color = getColorForRole("TIER6");
-                            } else if (leaderboardEntry.totalBetAmount > 5000) {
-                              color = getColorForRole("TIER5");
-                            } else if (leaderboardEntry.totalBetAmount > 2500) {
-                              color = getColorForRole("TIER4");
-                            } else if (leaderboardEntry.totalBetAmount > 1000) {
-                              color = getColorForRole("TIER3");
-                            } else if (leaderboardEntry.totalBetAmount > 500) {
-                              color = getColorForRole("TIER2");
-                            } else if (leaderboardEntry.totalBetAmount > 100) {
-                              color = getColorForRole("TIER1");
-                            }
-                          }
-                        } else {
-                          color = getColorForRole(chatProfile.role);
-                        }
-
-                        const broadcastMsg: ChatDataMessage = {
-                          type: "MSG",
-                          message: verifiedMessage.msg,
-                          username: chatProfile.nickname,
-                          wallet: chatProfile.walletId, // TODO hide for normal users?
-                          timestamp: Date.now(),
-                          color: color,
-                          role: chatProfile.role,
-                          id: `${idPrefix}${currentId}`,
-                          channel: msg.channel,
-                          icon: chatProfile.profileImageUrl,
-                        };
-                        addChatMessage(broadcastMsg, msg.channel);
-                        broadcastMessage(
-                          Buffer.from(JSON.stringify(broadcastMsg))
-                        );
-                      }
-                    }
-                  }
-                } else {
-                  logger.info("Received length 0");
-                }
-              } else {
-                sendSystemMessage("You are banned.", ws);
-              }
-            } else {
-              sendSystemMessage(
-                "Spam protection. You need to play at least 0.05 SOL last 7 days to chat. Refresh or try again",
-                ws
-              );
-
-              verifyIfCanChat(chatProfile.walletId, chatProfile.authToken);
-            }
+            handleSendMessage(chatProfile, ws, msg);
           } else if (msg.type === "BAN") {
             if (
               isAdmin(chatProfile.walletId) ||
