@@ -205,6 +205,53 @@ export interface Player {
   username: string;
 }
 
+const handleSendRFP = async (channel: number, ws: any = undefined) => {
+  const playerList = await pickPlayersForRFP();
+
+  const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
+
+  let shuffled = [
+    ...new Set(
+      playerList
+        .map((value) => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value)
+        .slice(0, amountOfPlayers)
+    ),
+  ];
+
+  if (shuffled.length > 0) {
+    grantRFP(shuffled, 0.01);
+
+    if (ws) {
+      sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
+    }
+
+    // Get player names
+    const playerNames = (
+      await Promise.all(
+        shuffled.map((walletId) => fetchPersonasProfile(walletId))
+      )
+    ).map((profile) => {
+      if (profile) {
+        return profile.nickname;
+      }
+      return "UNKNOWN";
+    });
+
+    const maxLength = 200;
+    const replyAI = await askAI(
+      `Make a cheerful/exciting message between 75 and ${maxLength} characters in length where you congratulate or surprise them by sending risk-free-plays (RFPs) to these ${
+        shuffled.length
+      } players, so they can play more games with us: ${playerNames.join(
+        " and "
+      )}`
+    );
+
+    broadcastBotMessage(`${replyAI.text.slice(0, maxLength + 25)}`, channel);
+  }
+};
+
 const handleCommand = async (
   command: string,
   ws: WebSocket,
@@ -327,44 +374,7 @@ const handleCommand = async (
     } else if (command.startsWith("rfp")) {
       sendSystemMessage(`Requested manual RFP sending!`, ws, true);
 
-      const playerList = await pickPlayersForRFP();
-
-      const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
-
-      let shuffled = [
-        ...new Set(
-          playerList
-            .map((value) => ({ value, sort: Math.random() }))
-            .sort((a, b) => a.sort - b.sort)
-            .map(({ value }) => value)
-            .slice(0, amountOfPlayers)
-        ),
-      ];
-
-      grantRFP(shuffled, 0.01);
-
-      if (shuffled.length > 0) {
-        sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
-
-        // Get player names
-        const playerNames = (
-          await Promise.all(
-            shuffled.map((walletId) => fetchPersonasProfile(walletId))
-          )
-        ).map((profile) => {
-          if (profile) {
-            return profile.nickname;
-          }
-          return "UNKNOWN";
-        });
-
-        broadcastBotMessage(
-          `Let it rain! Sending RFPs to ${
-            shuffled.length
-          } players: ${playerNames.join(" and ")}`,
-          channel
-        );
-      }
+      await handleSendRFP(channel, ws);
     } else {
       sendSystemMessage("Unknown command", ws, true);
     }
@@ -675,4 +685,13 @@ export const initWebsockets = () => {
   setInterval(() => {
     heartbeat();
   }, 55000);
+
+  setInterval(async () => {
+    try {
+      console.log("Trigger send RFP!");
+      await handleSendRFP(0);
+    } catch (err) {
+      console.log("Error handling RFP");
+    }
+  }, 1_200_000); //20 minutes
 };

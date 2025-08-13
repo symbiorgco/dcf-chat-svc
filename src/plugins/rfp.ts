@@ -3,10 +3,13 @@ import { GameResult } from "../websockets";
 import { askAI, recentChatMessagesForAI } from "./ai";
 
 export const grantRFP = (wallets: string[], solAmount) => {
-  console.log("GRANT RFP", wallets, solAmount);
+  console.log("GRANT RFP - TODO actual TX", wallets, solAmount);
 };
 
-const getPlayersWithMostRoundsPlayed = (gameResult: GameResult[]): string[] => {
+const getPlayersWithMostRoundsPlayed = (
+  gameResult: GameResult[],
+  delta: number
+): string[] => {
   const playerRoundCount = new Map<string, number>();
 
   gameResult.forEach((game) => {
@@ -29,7 +32,7 @@ const getPlayersWithMostRoundsPlayed = (gameResult: GameResult[]): string[] => {
   const playersWithMostRounds: string[] = [];
 
   playerRoundCount.forEach((value, player) => {
-    if (value === mostRounds) {
+    if (value >= mostRounds - delta) {
       playersWithMostRounds.push(player);
     }
   });
@@ -39,7 +42,10 @@ const getPlayersWithMostRoundsPlayed = (gameResult: GameResult[]): string[] => {
   return playersWithMostRounds;
 };
 
-const getPlayerWithMostLostRounds = (gameResult: GameResult[]): string[] => {
+const getPlayerWithMostLostRounds = (
+  gameResult: GameResult[],
+  delta: number
+): string[] => {
   const playerLostCount = new Map<string, number>();
 
   gameResult.forEach((game) => {
@@ -64,7 +70,7 @@ const getPlayerWithMostLostRounds = (gameResult: GameResult[]): string[] => {
   let playersWithMostLost: string[] = [];
 
   playerLostCount.forEach((lost, player) => {
-    if (lost === mostLost) {
+    if (lost >= mostLost - delta) {
       playersWithMostLost.push(player);
     }
   });
@@ -80,8 +86,8 @@ export const pickPlayersForRFP = async (): Promise<string[]> => {
     );
     const totalGames = response.data.payload as GameResult[];
 
-    const mostRoundPlayers = getPlayersWithMostRoundsPlayed(totalGames);
-    const mostLostRoundsPlayers = getPlayerWithMostLostRounds(totalGames);
+    const mostRoundPlayers = getPlayersWithMostRoundsPlayed(totalGames, 3);
+    const mostLostRoundsPlayers = getPlayerWithMostLostRounds(totalGames, 3);
 
     let msgId = 0;
     const parsedChatMessages = recentChatMessagesForAI.map((msg) => ({
@@ -91,11 +97,11 @@ export const pickPlayersForRFP = async (): Promise<string[]> => {
     }));
 
     const responseAI = await askAI(
-      "Select the Wallet ID of one chat participant who was the most empathic, cheerful or engaged with the community. Only supply one wallet ID. This is the chat log: " +
+      "Select between one to three Wallet IDs of chat participants who were the most empathic, cheerful or engaged with the community. Only supply max three wallet IDs. This is the chat log: " +
         JSON.stringify(parsedChatMessages)
     );
 
-    let selectedWalletId = "";
+    let selectedWalletId: string[] = [];
     if (responseAI && responseAI.text) {
       console.log(`AI Response: ${responseAI.text}`);
 
@@ -103,7 +109,7 @@ export const pickPlayersForRFP = async (): Promise<string[]> => {
         (msg) => msg.wallet && responseAI.text.includes(msg.wallet.slice(0, 8))
       );
       if (found && found.wallet) {
-        selectedWalletId = found.wallet;
+        selectedWalletId.push(found.wallet);
       }
     }
 
@@ -113,7 +119,7 @@ export const pickPlayersForRFP = async (): Promise<string[]> => {
     let allWallets = [
       ...mostRoundPlayers,
       ...mostLostRoundsPlayers,
-      selectedWalletId,
+      ...selectedWalletId,
     ];
 
     console.log(allWallets);
