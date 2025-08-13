@@ -103,9 +103,9 @@ export const verifyJwt = async (
           newChatProfile
         );
 
-        //Wait 5 sec to give a bit time to fetch the profile
+        //Wait 1 sec to give a bit time to fetch the profile
         const timeoutPromise = await new Promise((resolve) =>
-          setTimeout(resolve, 5000)
+          setTimeout(resolve, 1000)
         );
 
         await Promise.race([timeoutPromise, updateAuthCachePromise]);

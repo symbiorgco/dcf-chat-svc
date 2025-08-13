@@ -405,9 +405,6 @@ const handleSendMessage = async (
         ws
       );
 
-      // TODO if not able to chat, dont destroy the message yet
-
-      verifyIfCanChat(chatProfile.walletId);
       return;
     }
   }
