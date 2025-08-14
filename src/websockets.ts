@@ -221,8 +221,6 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
   ];
 
   if (shuffled.length > 0) {
-    grantRFP(shuffled, 0.01);
-
     if (ws) {
       sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
     }
@@ -241,14 +239,25 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
 
     const maxLength = 200;
     const replyAI = await askAI(
-      `Make a cheerful/exciting message between 75 and ${maxLength} characters in length where you congratulate or surprise them by sending risk-free-plays (RFPs) to these ${
+      `Make a cheerful/exciting message between 75 and ${maxLength} characters in length where you congratulate or surprise these ${
         shuffled.length
-      } players, so they can play more games with us: ${playerNames.join(
-        " and "
-      )}`
+      } winner${
+        shuffled.length > 1 ? "s" : ""
+      } by sending 1 risk-free-play (RFP)${
+        shuffled.length > 1 ? " to each" : ""
+      }, so they can play more games with us. This is the list of winners: ${playerNames}`
     );
 
-    broadcastBotMessage(`${replyAI.text.slice(0, maxLength + 25)}`, channel);
+    grantRFP(shuffled, 0.01);
+
+    if (replyAI) {
+      broadcastBotMessage(`${replyAI.text.slice(0, maxLength + 25)}`, channel);
+    } else {
+      broadcastBotMessage(
+        `Let's rain some RFP to ${playerNames.join(" and ")}`,
+        channel
+      );
+    }
   }
 };
 
