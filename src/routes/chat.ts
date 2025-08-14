@@ -12,6 +12,7 @@ import {
 import { verifyJwt } from "../authentication";
 import { logChatReport } from "../utils/modLogging";
 import NodeCache from "node-cache";
+import { verifyTransaction } from "../plugins/solana";
 
 const reportIntervalCache = new NodeCache({
   stdTTL: 10, // 1 message per second
@@ -146,6 +147,37 @@ router.post("/send_announcement", async (req, res) => {
         default:
           sendAnnouncement(message, wallet, false);
           break;
+      }
+
+      res.json({ completed: true });
+    } else {
+      res.json({ error: true, auth: "false" });
+    }
+  } catch (err) {
+    res.json({ error: true });
+  }
+});
+
+router.post("/request_tip_announcement", async (req, res) => {
+  try {
+    let authenticated = false;
+
+    const authKey = req.headers.authorization;
+
+    const chatProfile = await verifyJwt(authKey);
+    if (chatProfile) {
+      authenticated = true;
+    }
+
+    //TODO rate limit this per wallet
+
+    if (authenticated) {
+      const tx = req.body.signature as string;
+      const checked = await verifyTransaction(120, tx);
+      if (checked) {
+        sendAnnouncement("Tip successful!", "SYSTEM", true);
+      } else {
+        sendAnnouncement("Could not confirm the tip", "SYSTEM", false);
       }
 
       res.json({ completed: true });
