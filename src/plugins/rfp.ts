@@ -2,8 +2,29 @@ import axios from "axios";
 import { GameResult } from "../websockets";
 import { askAI, recentChatMessagesForAI } from "./ai";
 
-export const grantRFP = (wallets: string[], solAmount) => {
-  console.log("GRANT RFP - TODO actual TX", wallets, solAmount);
+export const grantRFP = async (wallets: string[], solAmount) => {
+  const rfpBody = {
+    reason: "Baby Bot",
+    solAmount: solAmount,
+    walletIds: wallets,
+  };
+
+  try {
+    console.log(`RFP rain ${solAmount} SOL starting...`);
+
+    const response = await axios.post(
+      `${process.env.REACT_APP_AEGIS_URL}/campaigns/${process.env.REACT_APP_RFP_CAMPAIGN}/risk-free-plays/secret`,
+      rfpBody,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    console.log(response);
+    console.log(`RFP rain ${solAmount} SOL succeeded...`);
+  } catch (err) {
+    console.log(err);
+    console.log(`RFP rain ${solAmount} SOL errored...`);
+  }
 };
 
 const getPlayersWithMostRoundsPlayed = (

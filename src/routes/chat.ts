@@ -13,6 +13,7 @@ import { verifyJwt } from "../authentication";
 import { logChatReport } from "../utils/modLogging";
 import NodeCache from "node-cache";
 import { verifyTransaction } from "../plugins/solana";
+import { fetchPersonasProfile } from "../plugins/personas";
 
 const reportIntervalCache = new NodeCache({
   stdTTL: 10, // 1 message per second
@@ -173,14 +174,23 @@ router.post("/request_tip_announcement", async (req, res) => {
 
     if (authenticated) {
       const tx = req.body.signature as string;
-      const checked = await verifyTransaction(120, tx);
-      if (checked) {
-        sendAnnouncement("Tip successful!", "SYSTEM", true);
+      //First wait 3 seconds to let it land on the blockchain
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const txResult = await verifyTransaction(300, tx);
+      if (txResult) {
+        const player = await fetchPersonasProfile(txResult.pubkey);
+        sendAnnouncement(
+          `${chatProfile.nickname} tipped ${txResult.sol.toFixed(2)} SOL to ${
+            player.nickname
+          }!`,
+          "SYSTEM",
+          true
+        );
+        res.json({ completed: true });
       } else {
-        sendAnnouncement("Could not confirm the tip", "SYSTEM", false);
+        console.log("Tip transaction could not be verified");
+        res.json({ error: true, auth: "false" });
       }
-
-      res.json({ completed: true });
     } else {
       res.json({ error: true, auth: "false" });
     }
