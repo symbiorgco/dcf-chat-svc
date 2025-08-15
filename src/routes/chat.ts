@@ -20,6 +20,13 @@ const reportIntervalCache = new NodeCache({
   checkperiod: 30,
 });
 
+const txCheckintervalCache = new NodeCache({
+  stdTTL: 2, // 2 message per second
+  checkperiod: 10,
+});
+
+const parsedTXs: string[] = [];
+
 export const router = express.Router();
 
 router.get("/viewers", async (req, res) => {
@@ -174,6 +181,13 @@ router.post("/request_tip_announcement", async (req, res) => {
 
     if (authenticated) {
       const tx = req.body.signature as string;
+
+      if (txCheckintervalCache.get(tx) || parsedTXs.includes(tx)) {
+        console.log("already parsed this tx");
+        res.json({ error: true });
+        return;
+      }
+      txCheckintervalCache.set(tx, true);
       //First wait 3 seconds to let it land on the blockchain
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const txResult = await verifyTransaction(300, tx);
@@ -186,13 +200,14 @@ router.post("/request_tip_announcement", async (req, res) => {
           "SYSTEM",
           true
         );
+        parsedTXs.push(tx);
         res.json({ completed: true });
       } else {
         console.log("Tip transaction could not be verified");
-        res.json({ error: true, auth: "false" });
+        res.json({ error: true });
       }
     } else {
-      res.json({ error: true, auth: "false" });
+      res.json({ error: true });
     }
   } catch (err) {
     res.json({ error: true });
