@@ -39,6 +39,7 @@ export const tryAndGetParsedTransaction = async (
   return performWithRetries(async () => {
     return await connection.getParsedTransaction(signature, {
       maxSupportedTransactionVersion: 0,
+      commitment: "confirmed",
     });
   });
 };
