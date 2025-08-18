@@ -248,13 +248,23 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
       }, so they can play more games with us. This is the list of winners: ${playerNames}`
     );
 
-    grantRFP(shuffled, 0.01);
+    const grantRFPresult = await grantRFP(shuffled, 0.01);
 
-    if (replyAI) {
-      broadcastBotMessage(`${replyAI.text.slice(0, maxLength + 25)}`, channel);
+    if (grantRFPresult) {
+      if (replyAI) {
+        broadcastBotMessage(
+          `${replyAI.text.slice(0, maxLength + 25)}`,
+          channel
+        );
+      } else {
+        broadcastBotMessage(
+          `Let's rain some RFP to ${playerNames.join(" and ")}`,
+          channel
+        );
+      }
     } else {
       broadcastBotMessage(
-        `Let's rain some RFP to ${playerNames.join(" and ")}`,
+        `I tried giving out some RFPs but it failed! I will talk to the devs and I will try again later!`,
         channel
       );
     }

@@ -11,7 +11,7 @@ export const fetchPersonasProfile = async (
 ): Promise<Profile | undefined> => {
   try {
     const response = await axios.get(
-      `${process.env.REACT_APP_PERSONAS_URL}/profiles/${walletId}`
+      `${process.env.PERSONAS_URL}/profiles/${walletId}`
     );
     return response.data.payload as Profile;
   } catch (err) {

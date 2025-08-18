@@ -2,28 +2,38 @@ import axios from "axios";
 import { GameResult } from "../websockets";
 import { askAI, recentChatMessagesForAI } from "./ai";
 
-export const grantRFP = async (wallets: string[], solAmount) => {
+export const grantRFP = async (
+  wallets: string[],
+  solAmount
+): Promise<boolean> => {
   const rfpBody = {
     reason: "Baby Bot",
     solAmount: solAmount,
     walletIds: wallets,
+    secretKey: process.env.RFP_SECRET_KEY as string,
   };
 
   try {
     console.log(`RFP rain ${solAmount} SOL starting...`);
 
     const response = await axios.post(
-      `${process.env.REACT_APP_AEGIS_URL}/campaigns/${process.env.REACT_APP_RFP_CAMPAIGN}/risk-free-plays/secret`,
+      `${process.env.AEGIS_URL}/campaigns/${process.env.RFP_CAMPAIGN}/risk-free-plays/secret`,
       rfpBody,
       {
         headers: { "Content-Type": "application/json" },
       }
     );
-    console.log(response);
-    console.log(`RFP rain ${solAmount} SOL succeeded...`);
+    if (response.data.payload) {
+      console.log(
+        `RFP rain ${solAmount} SOL succeeded...${response.data.payload}`
+      );
+      return true;
+    }
+    return false;
   } catch (err) {
     console.log(err);
     console.log(`RFP rain ${solAmount} SOL errored...`);
+    return false;
   }
 };
 
