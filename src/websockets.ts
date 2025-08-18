@@ -103,10 +103,10 @@ let currentId = 0;
 export const sendAnnouncement = (
   msg: string,
   wallet: string,
-  sendToAll: boolean
+  sendToAll: boolean,
+  channel: number = 999
 ) => {
   currentId++;
-  const channel = 999;
   const announcement: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg,
@@ -457,12 +457,12 @@ const handleSendMessage = async (
           ) {
             // Only admins can use commands
             // Handle command async
-            handleCommand(
+            /*handleCommand(
               verifiedMessage.msg.substring(1),
               ws,
               message.channel,
               chatProfile
-            );
+            );*/
             // DISABLED FOR NOW
           } else {
             // Handle normal message
