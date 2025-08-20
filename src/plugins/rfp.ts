@@ -132,15 +132,15 @@ export const pickPlayersForRFP = async (): Promise<string[]> => {
         JSON.stringify(parsedChatMessages)
     );
 
-    let selectedWalletId: string[] = [];
+    let selectedWalletIds: string[] = [];
     if (responseAI && responseAI.text) {
       console.log(`AI Response: ${responseAI.text}`);
 
-      const found = recentChatMessagesForAI.find(
+      const foundMessages = recentChatMessagesForAI.filter(
         (msg) => msg.wallet && responseAI.text.includes(msg.wallet.slice(0, 8))
       );
-      if (found && found.wallet) {
-        selectedWalletId.push(found.wallet);
+      if (foundMessages && foundMessages.length > 0) {
+        selectedWalletIds.push(...foundMessages.map((msg) => msg.wallet));
       }
     }
 
@@ -150,7 +150,7 @@ export const pickPlayersForRFP = async (): Promise<string[]> => {
     let allWallets = [
       ...mostRoundPlayers,
       ...mostLostRoundsPlayers,
-      ...selectedWalletId,
+      ...Array.from(new Set(selectedWalletIds)),
     ];
 
     console.log(allWallets);
