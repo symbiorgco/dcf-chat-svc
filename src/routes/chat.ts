@@ -12,11 +12,20 @@ import {
 import { verifyJwt } from "../authentication";
 import { logChatReport } from "../utils/modLogging";
 import NodeCache from "node-cache";
+import { verifyTransaction } from "../plugins/solana";
+import { fetchPersonasProfile } from "../plugins/personas";
 
 const reportIntervalCache = new NodeCache({
   stdTTL: 10, // 1 message per second
   checkperiod: 30,
 });
+
+const txCheckintervalCache = new NodeCache({
+  stdTTL: 2, // 2 message per second
+  checkperiod: 10,
+});
+
+const parsedTXs: string[] = [];
 
 export const router = express.Router();
 
@@ -111,7 +120,6 @@ router.post("/report", async (req, res) => {
       res.json({ error: true });
     }
   } catch (err) {
-    console.log(err); //TODO REMOVE
     res.json({ error: true });
   }
 });
@@ -151,6 +159,54 @@ router.post("/send_announcement", async (req, res) => {
       res.json({ completed: true });
     } else {
       res.json({ error: true, auth: "false" });
+    }
+  } catch (err) {
+    res.json({ error: true });
+  }
+});
+
+router.post("/request_tip_announcement", async (req, res) => {
+  try {
+    let authenticated = false;
+
+    const authKey = req.headers.authorization;
+
+    const chatProfile = await verifyJwt(authKey);
+    if (chatProfile) {
+      authenticated = true;
+    }
+
+    //TODO rate limit this per wallet
+
+    if (authenticated) {
+      const tx = req.body.signature as string;
+
+      if (txCheckintervalCache.get(tx) || parsedTXs.includes(tx)) {
+        console.log("already parsed this tx");
+        res.json({ error: true });
+        return;
+      }
+      txCheckintervalCache.set(tx, true);
+      //First wait 3 seconds to let it land on the blockchain
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const txResult = await verifyTransaction(300, tx);
+      if (txResult) {
+        const player = await fetchPersonasProfile(txResult.pubkey);
+        sendAnnouncement(
+          `${chatProfile.nickname} tipped ${txResult.sol.toFixed(2)} SOL to ${
+            player.nickname
+          }!`,
+          "SYSTEM",
+          true
+        );
+        parsedTXs.push(tx);
+        res.json({ completed: true });
+      } else {
+        console.log("Tip transaction could not be verified");
+        res.json({ error: true });
+      }
+    } else {
+      res.json({ error: true });
     }
   } catch (err) {
     res.json({ error: true });

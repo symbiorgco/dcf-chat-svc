@@ -1,6 +1,9 @@
 import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
+import { askAI } from "./plugins/ai";
+import { fetchPersonasProfile } from "./plugins/personas";
+import { grantRFP, pickPlayersForRFP } from "./plugins/rfp";
 import {
   CHAT_COLOR,
   ChatDataMessage,
@@ -20,6 +23,7 @@ import {
   isHelpfulDegen,
   isMod,
   isTimedOut,
+  recentChatMessages,
   removeChatMessage,
   timeoutUser,
   unbanUser,
@@ -28,12 +32,12 @@ import {
 import NodeCache from "node-cache";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 import { getLeaderboardEntry } from "./userProfiles";
+import axios from "axios";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
   noServer: true,
   maxPayload: 512,
-  autoPong: false,
 });
 
 server.on("upgrade", async function upgrade(request, socket, head) {
@@ -64,7 +68,6 @@ server.on("upgrade", async function upgrade(request, socket, head) {
 export const wssViewers = new WebSocketServer({
   port: Number.parseInt(process.env.PORT_WS_VIEW),
   maxPayload: 512,
-  autoPong: false,
 });
 
 export let viewers = 0;
@@ -100,20 +103,21 @@ let currentId = 0;
 export const sendAnnouncement = (
   msg: string,
   wallet: string,
-  sendToAll: boolean
+  sendToAll: boolean,
+  channel: number = 999
 ) => {
   currentId++;
-  const channel = 999;
   const announcement: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg,
-    username: "SYSTEM",
+    username: "Baby Coin",
     wallet,
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}`,
-    role: "",
+    role: "BOT",
     channel: channel,
+    icon: "https://app.degencoinflip.com/logo192.png",
   };
 
   const msgBuffer = Buffer.from(JSON.stringify(announcement));
@@ -136,25 +140,383 @@ export const sendAnnouncement = (
   }
 };
 
-const sendSystemMessage = (msg: string, ws: any) => {
+const sendSystemMessage = (msg: string, ws: any, bot: boolean = false) => {
   currentId++;
   const errorMsg: ChatDataMessage = {
-    type: "MSG",
-    message: msg,
-    username: "SYSTEM",
-    wallet: "SYSTEM",
+    type: "ANNOUNCEMENT",
+    message: msg || " ",
+    username: bot ? "Baby Coin" : "SYSTEM",
+    wallet: bot ? "BOT" : "SYSTEM",
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
     id: `${idPrefix}${currentId}B`,
-    role: "SYSTEM",
+    role: "PRIVATE",
     channel: 999,
+    icon: "https://app.degencoinflip.com/logo192.png",
   };
-  ws.send(Buffer.from(JSON.stringify(errorMsg)), {
-    binary: false,
-  });
+  try {
+    ws.send(Buffer.from(JSON.stringify(errorMsg)), {
+      binary: false,
+    });
+  } catch (err) {
+    logger.error("Error sending system message: ", err);
+  }
+};
+
+const broadcastBotMessage = (msg: string, channel: number) => {
+  try {
+    currentId++;
+    const broadcastMsg: ChatDataMessage = {
+      type: "MSG",
+      message: msg,
+      username: "Baby Coin",
+      wallet: "BOT", // TODO hide for normal users?
+      timestamp: Date.now(),
+      color: CHAT_COLOR.ORANGE,
+      role: "BOT",
+      id: `${idPrefix}${currentId}`,
+      channel: channel,
+      icon: "https://app.degencoinflip.com/logo192.png",
+    };
+
+    addChatMessage(broadcastMsg, channel);
+    broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+  } catch (err) {
+    logger.error("Error sending system message: ", err);
+  }
+};
+
+export interface GameResult {
+  createdAt: string;
+  gameNumber: number;
+  roomId: number;
+  roundId: number;
+  playerCount: number;
+  players: Record<string, Player>;
+  gameResult: number | string | null;
+  hash: string;
+}
+
+export interface Player {
+  lamports: string;
+  reward: string;
+  choice: string;
+  pubkey: string;
+  username: string;
+}
+
+const handleSendRFP = async (channel: number, ws: any = undefined) => {
+  const playerList = await pickPlayersForRFP();
+
+  const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
+
+  let shuffled = [
+    ...new Set(
+      playerList
+        .map((value) => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value)
+        .slice(0, amountOfPlayers)
+    ),
+  ];
+
+  if (shuffled.length > 0) {
+    if (ws) {
+      sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
+    }
+
+    // Get player names
+    const playerNames = (
+      await Promise.all(
+        shuffled.map((walletId) => fetchPersonasProfile(walletId))
+      )
+    ).map((profile) => {
+      if (profile) {
+        return profile.nickname;
+      }
+      return "UNKNOWN";
+    });
+
+    const maxLength = 200;
+    const replyAI = await askAI(
+      `Make a cheerful/exciting message between 75 and ${maxLength} characters in length where you congratulate or surprise these ${
+        shuffled.length
+      } winner${
+        shuffled.length > 1 ? "s" : ""
+      } by sending 1 risk-free-play (RFP)${
+        shuffled.length > 1 ? " to each" : ""
+      }, so they can play more games with us. This is the list of winners: ${playerNames}`
+    );
+
+    const grantRFPresult = await grantRFP(shuffled, 0.01);
+
+    if (grantRFPresult) {
+      if (replyAI) {
+        broadcastBotMessage(
+          `${replyAI.text.slice(0, maxLength + 25)}`,
+          channel
+        );
+      } else {
+        broadcastBotMessage(
+          `Let's rain some RFP to ${playerNames.join(" and ")}`,
+          channel
+        );
+      }
+    } else {
+      broadcastBotMessage(
+        `I tried giving out some RFPs but it failed! I will talk to the devs and I will try again later!`,
+        channel
+      );
+    }
+  }
+};
+
+const handleCommand = async (
+  command: string,
+  ws: WebSocket,
+  channel: number,
+  chatProfile: ChatProfile
+) => {
+  try {
+    if (command.startsWith("q")) {
+      const subCommand = command.substring(1).trim();
+      //Question command
+      //sendSystemMessage(`You asked Q: ${subCommand}`, ws, true);
+
+      /////// TODO make more generic
+      currentId++;
+
+      const broadcastMsg: ChatDataMessage = {
+        type: "MSG",
+        message: `Baby Coin, ${subCommand}`,
+        username: chatProfile.nickname,
+        wallet: chatProfile.walletId, // TODO hide for normal users?
+        timestamp: Date.now(),
+        color: getColorForRole("MEMBER"),
+        role: chatProfile.role,
+        id: `${idPrefix}${currentId}`,
+        channel: channel,
+        icon: chatProfile.profileImageUrl,
+      };
+
+      addChatMessage(broadcastMsg, channel);
+      broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+
+      /// END TODO
+
+      const response = await askAI(
+        subCommand + " and limit your reply to max 175 characters."
+      );
+      if (response && response.text) {
+        const reply = response.text;
+        console.log(`Used /q: ${subCommand} - AI Response: ${reply}`);
+        broadcastBotMessage(reply, channel);
+      } else {
+        sendSystemMessage("Unable to handle command", ws, true);
+      }
+    } else if (command.startsWith("chat")) {
+      const subCommand = command.substring(4).trim();
+
+      //Chat command
+      sendSystemMessage(`used /chat: ${subCommand}`, ws, true);
+
+      const parsedChatMessages = recentChatMessages.get(0).map((msg) => ({
+        id: msg.id,
+        wallet: msg.wallet.slice(0, 8),
+        username: msg.username,
+        message: msg.message,
+      }));
+
+      const response = await askAI(
+        subCommand +
+          " And provide 1 wallet ID if applicable. " +
+          JSON.stringify(parsedChatMessages)
+      );
+      if (response && response.text) {
+        const reply = response.text;
+        console.log(`A: used /chat: ${subCommand} - AI Response: ${reply}`);
+        //broadcastBotMessage(reply, channel);
+        sendSystemMessage(reply, ws, true);
+      } else {
+        sendSystemMessage("Unable to handle command", ws, true);
+      }
+    } else if (command.startsWith("game")) {
+      //Game history
+      const subCommand = command.substring(4).trim();
+
+      //Game command
+      sendSystemMessage(`used /game: ${subCommand}`, ws, true);
+
+      const response = await axios.get(
+        `https://api.dealer.degencoinflip.com/v1/game/2/room/1/rounds?limit=100`
+      );
+      const totalGames = response.data.payload as GameResult[];
+
+      const parsedGames = totalGames.map((game) => {
+        if (!game.gameResult) return;
+        return {
+          mutliplier: game.gameResult,
+          players: Object.values(game.players).map((player) => ({
+            pubkey: player.pubkey.slice(0, 8),
+            selection: player.choice,
+            result:
+              (Number.parseFloat(
+                (
+                  BigInt(player.reward.split(".")[0]) / BigInt(1_000_000)
+                ).toString()
+              ) -
+                Number.parseFloat(
+                  (
+                    BigInt(player.lamports.split(".")[0]) / BigInt(1_000_000)
+                  ).toString()
+                )) /
+              1000,
+            username: player.username,
+          })),
+          roundId: game.roundId,
+        };
+      });
+
+      const responseAI = await askAI(
+        subCommand +
+          ". And provide 1 wallet ID if applicable. This is the data of last 100 rounds of the crash game: " +
+          JSON.stringify(parsedGames)
+      );
+      if (responseAI && responseAI.text) {
+        const reply = responseAI.text;
+        console.log(`A: used /game: ${subCommand} - AI Response: ${reply}`);
+        //broadcastBotMessage(reply, channel);
+        sendSystemMessage(reply, ws, true);
+      } else {
+        sendSystemMessage("Unable to handle command", ws, true);
+      }
+    } else if (command.startsWith("rfp")) {
+      sendSystemMessage(`Requested manual RFP sending!`, ws, true);
+
+      await handleSendRFP(channel, ws);
+    } else {
+      sendSystemMessage("Unknown command", ws, true);
+    }
+  } catch (err) {
+    console.log("Error handling command: ", err);
+    logger.error("Error handling command: ", err);
+    sendSystemMessage("Error handling command", ws, true);
+  }
 };
 
 let uniqueId = 0;
+
+const handleSendMessage = async (
+  chatProfile: ChatProfile,
+  ws: any,
+  message: ChatDataRequestMessage
+) => {
+  intervalCache.set(chatProfile.walletId, true);
+
+  if (message.channel > 998) {
+    return;
+  }
+
+  if (!isAllowedToChat(chatProfile.walletId)) {
+    if (!(await verifyIfCanChat(chatProfile.walletId))) {
+      sendSystemMessage(
+        "Spam protection. You need to play at least 0.01 SOL last 7 days to chat. Refresh or try again",
+        ws
+      );
+
+      return;
+    }
+  }
+
+  // Check if allowed to chat
+  if (!isBanned(chatProfile.walletId)) {
+    if (message.message.length > 0) {
+      if (isTimedOut(chatProfile.walletId)) {
+        sendSystemMessage("You are timed out for 30 minutes.", ws);
+      } else {
+        if (chatProfile.role === "MEMBER") {
+          //Check if needed to update role
+          //TODO should not be needed
+          chatProfile.role = getRole(chatProfile.walletId);
+        }
+
+        const verifiedMessage = verifyMessage(
+          message.message,
+          isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)
+        );
+
+        if (verifiedMessage.error) {
+          sendSystemMessage(
+            `Error sending your message: ${verifiedMessage.errorMessage}`,
+            ws
+          );
+        } else {
+          if (
+            isAdmin(chatProfile.walletId) &&
+            verifiedMessage.msg.startsWith("/")
+          ) {
+            // Only admins can use commands
+            // Handle command async
+            /*handleCommand(
+              verifiedMessage.msg.substring(1),
+              ws,
+              message.channel,
+              chatProfile
+            );*/
+            // DISABLED FOR NOW
+          } else {
+            // Handle normal message
+            currentId++;
+
+            let color: CHAT_COLOR = getColorForRole("MEMBER");
+            if (chatProfile.role === "HELPFUL_DEGEN") {
+              const leaderboardEntry = getLeaderboardEntry(
+                chatProfile.walletId
+              );
+
+              if (leaderboardEntry) {
+                if (leaderboardEntry.totalBetAmount > 10000) {
+                  color = getColorForRole("TIER6");
+                } else if (leaderboardEntry.totalBetAmount > 5000) {
+                  color = getColorForRole("TIER5");
+                } else if (leaderboardEntry.totalBetAmount > 2500) {
+                  color = getColorForRole("TIER4");
+                } else if (leaderboardEntry.totalBetAmount > 1000) {
+                  color = getColorForRole("TIER3");
+                } else if (leaderboardEntry.totalBetAmount > 500) {
+                  color = getColorForRole("TIER2");
+                } else if (leaderboardEntry.totalBetAmount > 100) {
+                  color = getColorForRole("TIER1");
+                }
+              }
+            } else {
+              color = getColorForRole(chatProfile.role);
+            }
+
+            const broadcastMsg: ChatDataMessage = {
+              type: "MSG",
+              message: verifiedMessage.msg,
+              username: chatProfile.nickname,
+              wallet: chatProfile.walletId, // TODO hide for normal users?
+              timestamp: Date.now(),
+              color: color,
+              role: chatProfile.role,
+              id: `${idPrefix}${currentId}`,
+              channel: message.channel,
+              icon: chatProfile.profileImageUrl,
+            };
+            addChatMessage(broadcastMsg, message.channel);
+            broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
+          }
+        }
+      }
+    } else {
+      logger.info("Received length 0");
+    }
+  } else {
+    sendSystemMessage("You are banned.", ws);
+  }
+};
 
 wssAuthenticated.on(
   "connection",
@@ -200,91 +562,7 @@ wssAuthenticated.on(
         try {
           const msg = JSON.parse(data.toString()) as ChatDataRequestMessage;
           if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
-            intervalCache.set(chatProfile.walletId, true);
-
-            // Check if allowed to chat
-            if (isAllowedToChat(chatProfile.walletId)) {
-              if (!isBanned(chatProfile.walletId)) {
-                if (msg.message.length > 0) {
-                  if (isTimedOut(chatProfile.walletId)) {
-                    sendSystemMessage("You are timed out for 30 minutes.", ws);
-                  } else {
-                    if (chatProfile.role === "MEMBER") {
-                      //Check if needed to update role
-                      //TODO should not be needed
-                      chatProfile.role = getRole(chatProfile.walletId);
-                    }
-
-                    const verifiedMessage = verifyMessage(
-                      msg.message,
-                      isAdmin(chatProfile.walletId) ||
-                        isMod(chatProfile.walletId)
-                    );
-                    if (verifiedMessage.error) {
-                      sendSystemMessage(
-                        `Error sending your message: ${verifiedMessage.errorMessage}`,
-                        ws
-                      );
-                    } else {
-                      currentId++;
-
-                      let color: CHAT_COLOR = getColorForRole("MEMBER");
-                      if (chatProfile.role === "HELPFUL_DEGEN") {
-                        const leaderboardEntry = getLeaderboardEntry(
-                          chatProfile.walletId
-                        );
-
-                        if (leaderboardEntry) {
-                          if (leaderboardEntry.totalBetAmount > 10000) {
-                            color = getColorForRole("TIER6");
-                          } else if (leaderboardEntry.totalBetAmount > 5000) {
-                            color = getColorForRole("TIER5");
-                          } else if (leaderboardEntry.totalBetAmount > 2500) {
-                            color = getColorForRole("TIER4");
-                          } else if (leaderboardEntry.totalBetAmount > 1000) {
-                            color = getColorForRole("TIER3");
-                          } else if (leaderboardEntry.totalBetAmount > 500) {
-                            color = getColorForRole("TIER2");
-                          } else if (leaderboardEntry.totalBetAmount > 100) {
-                            color = getColorForRole("TIER1");
-                          }
-                        }
-                      } else {
-                        color = getColorForRole(chatProfile.role);
-                      }
-
-                      const broadcastMsg: ChatDataMessage = {
-                        type: "MSG",
-                        message: verifiedMessage.msg,
-                        username: chatProfile.nickname,
-                        wallet: chatProfile.walletId, // TODO hide for normal users?
-                        timestamp: Date.now(),
-                        color: color,
-                        role: chatProfile.role,
-                        id: `${idPrefix}${currentId}`,
-                        channel: msg.channel,
-                        icon: chatProfile.profileImageUrl,
-                      };
-                      addChatMessage(broadcastMsg, msg.channel);
-                      broadcastMessage(
-                        Buffer.from(JSON.stringify(broadcastMsg))
-                      );
-                    }
-                  }
-                } else {
-                  logger.info("Received length 0");
-                }
-              } else {
-                sendSystemMessage("You are banned.", ws);
-              }
-            } else {
-              sendSystemMessage(
-                "Spam protection. You need to play at least 0.05 SOL last 7 days to chat. Refresh or try again",
-                ws
-              );
-
-              verifyIfCanChat(chatProfile.walletId, chatProfile.authToken);
-            }
+            handleSendMessage(chatProfile, ws, msg);
           } else if (msg.type === "BAN") {
             if (
               isAdmin(chatProfile.walletId) ||
@@ -423,4 +701,13 @@ export const initWebsockets = () => {
   setInterval(() => {
     heartbeat();
   }, 55000);
+
+  setInterval(async () => {
+    try {
+      console.log("Trigger send RFP!");
+      await handleSendRFP(0);
+    } catch (err) {
+      console.log("Error handling RFP");
+    }
+  }, 1_200_000); //20 minutes
 };

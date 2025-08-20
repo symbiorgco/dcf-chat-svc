@@ -11,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.58.0",
+    "@solana/web3.js": "^1.98.4",
     "@types/nanotimer": "^0.3.2",
     "@types/ws": "^8.5.8",
     "axios": "^0.27.2",

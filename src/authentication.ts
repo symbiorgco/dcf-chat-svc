@@ -19,24 +19,36 @@ const DEALER_API = process.env.DEALER_API as string;
 
 const authenticatedCache = new NodeCache({
   stdTTL: 75,
-  checkperiod: 1200,
+  checkperiod: 5,
 });
 
-export const verifyIfCanChat = async (wallet: string, authToken: string) => {
+export const verifyIfCanChat = async (wallet: string) => {
   if (isAllowedToChat(wallet)) return;
 
   try {
+    const leaderboardEntry = getLeaderboardEntry(wallet);
+
+    //always add and keep high players
+    if (leaderboardEntry && leaderboardEntry.totalBetAmount >= 250) {
+      addWalletToChat(wallet);
+      return true;
+    }
+
     const response = await axios.get(
       `https://api.stats.degencoinflip.com/v1/users/${wallet}/stats?timeFrame=1w`
     );
     const totalBetAmount = response.data.payload?.summary?.totalBetAmount;
-    if (totalBetAmount && totalBetAmount >= 0.049) {
+    if (totalBetAmount && totalBetAmount >= 0.009) {
       addWalletToChat(wallet);
+      return true;
     }
   } catch (e) {
     logger.error(`Error fetching wallet history of player ${wallet}`);
     logger.error(e);
+    return false;
   }
+
+  return false;
 };
 
 export const verifyJwt = async (
@@ -48,16 +60,17 @@ export const verifyJwt = async (
 
     const fromCache = authenticatedCache.get(authToken) as ChatProfile;
     if (fromCache) {
+      verifyIfCanChat(walletId);
       return fromCache;
     } else {
-      return await axios
+      const newChatProfile: ChatProfile = await axios
         .get(`${DEALER_API}/player-check`, {
           headers: {
             Authorization: authToken,
             "Content-Type": "application/json",
           },
         })
-        .then((response) => {
+        .then(async (response) => {
           if (response.data.payload.isSuccessful === true) {
             const newChatProfile = response.data.payload.profile as ChatProfile;
 
@@ -67,13 +80,6 @@ export const verifyJwt = async (
 
             //Ensure walletid is set
             newChatProfile.walletId = walletId;
-            newChatProfile.role = getRole(walletId);
-            newChatProfile.authToken = authToken;
-
-            updateAuthCache(authToken, newChatProfile);
-
-            verifyIfCanChat(walletId, authToken);
-
             return newChatProfile;
           } else {
             logger.info(`[JWT] user connection failure ${walletId}`);
@@ -85,6 +91,28 @@ export const verifyJwt = async (
           //logger.error(err);
           return undefined;
         });
+
+      if (newChatProfile) {
+        newChatProfile.role = getRole(walletId);
+        newChatProfile.authToken = authToken;
+
+        //No await to avoid
+        verifyIfCanChat(walletId);
+        const updateAuthCachePromise = updateAuthCache(
+          authToken,
+          newChatProfile
+        );
+
+        //Wait 1 sec to give a bit time to fetch the profile
+        const timeoutPromise = await new Promise((resolve) =>
+          setTimeout(resolve, 1000)
+        );
+
+        await Promise.race([timeoutPromise, updateAuthCachePromise]);
+        return authenticatedCache.get(authToken);
+      }
+
+      return undefined;
     }
   } catch (err) {
     logger.error("[JWT] unknown error");
@@ -94,17 +122,17 @@ export const verifyJwt = async (
 
 const updateAuthCache = async (authToken: string, chatProfile: ChatProfile) => {
   try {
-    authenticatedCache.set(authToken, chatProfile);
-
     const leaderboardEntry = getLeaderboardEntry(chatProfile.walletId);
     if (
       !leaderboardEntry ||
-      leaderboardEntry.timestamp < DateTime.now().minus({ hours: 1 }).toMillis()
+      leaderboardEntry.timestamp <
+        DateTime.now().minus({ minutes: 5 }).toMillis()
     ) {
       await fetchTotalVolume(chatProfile.walletId);
       chatProfile.role = getRole(chatProfile.walletId);
-      authenticatedCache.set(authToken, chatProfile);
     }
+
+    authenticatedCache.set(authToken, chatProfile);
   } catch (err) {
     logger.info(
       `[Leaderboard] Update of player failed ${chatProfile.walletId}`
