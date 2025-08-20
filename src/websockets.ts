@@ -59,7 +59,7 @@ server.on("upgrade", async function upgrade(request, socket, head) {
     });
   } catch (err) {
     logger.error(`[JWT] error player connecting`);
-    logger.error(err);
+    logger.error(err as Error);
     socket.destroy();
     return;
   }
@@ -159,7 +159,7 @@ const sendSystemMessage = (msg: string, ws: any, bot: boolean = false) => {
       binary: false,
     });
   } catch (err) {
-    logger.error("Error sending system message: ", err);
+    logger.error("Error sending system message: ", err as Error);
   }
 };
 
@@ -182,7 +182,7 @@ const broadcastBotMessage = (msg: string, channel: number) => {
     addChatMessage(broadcastMsg, channel);
     broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
   } catch (err) {
-    logger.error("Error sending system message: ", err);
+    logger.error("Error sending system message: ", err as Error);
   }
 };
 
@@ -399,7 +399,7 @@ const handleCommand = async (
     }
   } catch (err) {
     console.log("Error handling command: ", err);
-    logger.error("Error handling command: ", err);
+    logger.error("Error handling command: ", err as Error);
     sendSystemMessage("Error handling command", ws, true);
   }
 };
@@ -636,12 +636,12 @@ wssAuthenticated.on(
           }
         } catch (err) {
           logger.error("received: %s", data);
-          logger.error(err);
+          logger.error(err as Error);
         }
       });
     } catch (err) {
       playerList.delete(playerId);
-      logger.error(err);
+      logger.error(err as Error);
     }
   }
 );
@@ -670,7 +670,7 @@ const updateViewers = () => {
       `[STATS] Total connected clients: ${viewers} - Players: ${filteredArr.length}`
     );
   } catch (err) {
-    logger.error("Error updating viewers: ", err);
+    logger.error("Error updating viewers: ", err as Error);
   }
 };
 
