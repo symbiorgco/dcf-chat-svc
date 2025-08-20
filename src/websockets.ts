@@ -159,7 +159,7 @@ const sendSystemMessage = (msg: string, ws: any, bot: boolean = false) => {
       binary: false,
     });
   } catch (err) {
-    logger.error("Error sending system message: ", err as Error);
+    logger.error("Error sending system message");
   }
 };
 
@@ -182,7 +182,7 @@ const broadcastBotMessage = (msg: string, channel: number) => {
     addChatMessage(broadcastMsg, channel);
     broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
   } catch (err) {
-    logger.error("Error sending system message: ", err as Error);
+    logger.error("Error sending system message");
   }
 };
 
@@ -399,7 +399,7 @@ const handleCommand = async (
     }
   } catch (err) {
     console.log("Error handling command: ", err);
-    logger.error("Error handling command: ", err as Error);
+    logger.error("Error handling command");
     sendSystemMessage("Error handling command", ws, true);
   }
 };
@@ -670,7 +670,7 @@ const updateViewers = () => {
       `[STATS] Total connected clients: ${viewers} - Players: ${filteredArr.length}`
     );
   } catch (err) {
-    logger.error("Error updating viewers: ", err as Error);
+    logger.error("Error updating viewers: ", err);
   }
 };
 
