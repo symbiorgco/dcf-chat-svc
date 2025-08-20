@@ -670,7 +670,7 @@ const updateViewers = () => {
       `[STATS] Total connected clients: ${viewers} - Players: ${filteredArr.length}`
     );
   } catch (err) {
-    logger.error("Error updating viewers: ", err);
+    logger.error("Error updating viewers");
   }
 };
 
