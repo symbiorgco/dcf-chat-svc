@@ -120,7 +120,6 @@ router.post("/report", async (req, res) => {
       res.json({ error: true });
     }
   } catch (err) {
-    console.log(err); //TODO REMOVE
     res.json({ error: true });
   }
 });
