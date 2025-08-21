@@ -40,6 +40,10 @@ export const wssAuthenticated = new WebSocketServer({
   maxPayload: 512,
 });
 
+//Settings - hardcoded;
+const commandsEnabled = false;
+const enableRfpSending = true;
+
 server.on("upgrade", async function upgrade(request, socket, head) {
   let chatProfile: ChatProfile = undefined;
 
@@ -206,68 +210,93 @@ export interface Player {
 }
 
 const handleSendRFP = async (channel: number, ws: any = undefined) => {
-  const playerList = await pickPlayersForRFP();
+  try {
+    const playerList = await pickPlayersForRFP();
 
-  const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
+    const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
 
-  let shuffled = [
-    ...new Set(
-      playerList
-        .map((value) => ({ value, sort: Math.random() }))
-        .sort((a, b) => a.sort - b.sort)
-        .map(({ value }) => value)
-        .slice(0, amountOfPlayers)
-    ),
-  ];
+    let shuffled = [
+      ...new Set(
+        playerList
+          .map((value) => ({ value, sort: Math.random() }))
+          .sort((a, b) => a.sort - b.sort)
+          .map(({ value }) => value)
+          .slice(0, amountOfPlayers)
+      ),
+    ];
 
-  if (shuffled.length > 0) {
-    if (ws) {
-      sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
-    }
-
-    // Get player names
-    const playerNames = (
-      await Promise.all(
-        shuffled.map((walletId) => fetchPersonasProfile(walletId))
-      )
-    ).map((profile) => {
-      if (profile) {
-        return profile.nickname;
+    if (shuffled.length > 0) {
+      if (ws) {
+        sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
       }
-      return "UNKNOWN";
-    });
 
-    const maxLength = 200;
-    const replyAI = await askAI(
-      `Make a cheerful/exciting message between 75 and ${maxLength} characters in length where you congratulate or surprise these ${
-        shuffled.length
-      } winner${
-        shuffled.length > 1 ? "s" : ""
-      } by sending 1 risk-free-play (RFP)${
-        shuffled.length > 1 ? " to each" : ""
-      }, so they can play more games with us. This is the list of winners: ${playerNames}`
-    );
+      // Get player names
+      const playerNames = (
+        await Promise.all(
+          shuffled.map((walletId) => fetchPersonasProfile(walletId))
+        )
+      ).map((profile) => {
+        if (profile) {
+          return profile.nickname;
+        }
+        return "UNKNOWN";
+      });
 
-    const grantRFPresult = await grantRFP(shuffled, 0.01);
+      const maxLength = 200;
+      const replyAI = await askAI(
+        `You're giving out RFP (risk-free-plays) to positive chat members in DCF, a crypto degen community that's casual and fun with understated humor. This is crash chat - a crash game that simulates meme coin trading on a chart interface. Winners are chosen based on recent games played or chat activity. Not all winners participate in the chat.
 
-    if (grantRFPresult) {
-      if (replyAI) {
-        broadcastBotMessage(
-          `${replyAI.text.slice(0, maxLength + 25)}`,
-          channel
-        );
+Community context: We're self-aware about crypto/gambling culture. Some crypto terms work naturally (like "diamond hands"), but avoid forced clichés like "HODL," "wen moon," or "bags" that don't apply to crash games.
+
+Game lingo (use sparingly): "Crashley" = the crash game personified, "greens" = wins above 200%, "golds" = big wins above 10,000%, "gaps" = periods with no wins, "devs sold" = when chart crashes.
+
+Write a 75-125 character message congratulating these ${playerNames.length} winners for positive behavior in chat. Important: Always use the names of the winners in your message.
+
+Style (pick randomly, examples are style guides not templates):
+- 45% chance: Straightforward and casual 
+- 20% chance: Crash-aware reference 
+- 15% chance: Roast mode - poke fun at shared degen experiences with absurd/exaggerated outcomes, not personal traits (example: "Player1 and Player2 didn't lose their life savings today, RFP celebration")
+- 12% chance: Self-aware about community 
+- 8% chance: Backhanded compliment toward non-winners (example: "Player1 and Player2 staying positive unlike certain others, RFP sent").
+
+Sound like a community member, not a bot. No excessive emojis. Winners: ${playerNames}`
+      );
+
+      const grantRFPresult = await grantRFP(shuffled, 0.01);
+
+      if (grantRFPresult) {
+        if (replyAI) {
+          broadcastBotMessage(
+            `${replyAI.text.slice(0, maxLength + 25)}`,
+            channel
+          );
+        } else {
+          broadcastBotMessage(
+            `Let's rain some RFP to ${playerNames.join(" and ")}`,
+            channel
+          );
+        }
       } else {
         broadcastBotMessage(
-          `Let's rain some RFP to ${playerNames.join(" and ")}`,
+          `I tried giving out some RFPs but it failed! I will talk to the devs and I will try again later!`,
           channel
         );
       }
-    } else {
-      broadcastBotMessage(
-        `I tried giving out some RFPs but it failed! I will talk to the devs and I will try again later!`,
-        channel
-      );
     }
+  } catch (err) {
+    console.log(err);
+  }
+
+  //Redo when not triggered manually
+  if (!ws) {
+    setTimeout(async () => {
+      try {
+        console.log("Trigger send RFP!");
+        await handleSendRFP(0);
+      } catch (err) {
+        console.log("Error handling RFP");
+      }
+    }, 1_100_000 + Math.round(Math.random() * 200_000));
   }
 };
 
@@ -457,13 +486,14 @@ const handleSendMessage = async (
           ) {
             // Only admins can use commands
             // Handle command async
-            /*handleCommand(
-              verifiedMessage.msg.substring(1),
-              ws,
-              message.channel,
-              chatProfile
-            );*/
-            // DISABLED FOR NOW
+            if (commandsEnabled) {
+              handleCommand(
+                verifiedMessage.msg.substring(1),
+                ws,
+                message.channel,
+                chatProfile
+              );
+            }
           } else {
             // Handle normal message
             currentId++;
@@ -702,12 +732,14 @@ export const initWebsockets = () => {
     heartbeat();
   }, 55000);
 
-  setInterval(async () => {
-    try {
-      console.log("Trigger send RFP!");
-      await handleSendRFP(0);
-    } catch (err) {
-      console.log("Error handling RFP");
-    }
-  }, 1_200_000); //20 minutes
+  if (enableRfpSending) {
+    setTimeout(async () => {
+      try {
+        console.log("Trigger send RFP!");
+        await handleSendRFP(0);
+      } catch (err) {
+        console.log("Error handling RFP");
+      }
+    }, 1_200_000); //20 minutes
+  }
 };
