@@ -42,7 +42,7 @@ export const wssAuthenticated = new WebSocketServer({
 
 //Settings - hardcoded;
 const commandsEnabled = false;
-const enableRfpSending = true;
+const enableRfpSending = true; //turn off
 
 server.on("upgrade", async function upgrade(request, socket, head) {
   let chatProfile: ChatProfile = undefined;
@@ -250,7 +250,7 @@ Community context: We're self-aware about crypto/gambling culture. Some crypto t
 
 Game lingo (use sparingly): "Crashley" = the crash game personified, "greens" = wins above 200%, "golds" = big wins above 10,000%, "gaps" = periods with no wins, "devs sold" = when chart crashes.
 
-Write a 75-125 character message congratulating these ${playerNames.length} winners for positive behavior in chat. Important: Always use the names of the winners in your message.
+Write a 75-125 character message congratulating these ${playerNames.length} winners for positive behavior in chat. Don't mention specific things they said or did - keep it general about good vibes/community spirit.
 
 Style (pick randomly, examples are style guides not templates):
 - 45% chance: Straightforward and casual 
