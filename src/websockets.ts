@@ -8,6 +8,7 @@ import {
   CHAT_COLOR,
   ChatDataMessage,
   ChatDataRequestMessage,
+  ChatMetaData,
   ChatProfile,
 } from "./utils/types";
 import { logger } from "./logger";
@@ -108,13 +109,14 @@ export const sendAnnouncement = (
   msg: string,
   wallet: string,
   sendToAll: boolean,
+  metadata: ChatMetaData = undefined,
   channel: number = 999
 ) => {
   currentId++;
   const announcement: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg,
-    username: "Baby Coin",
+    username: "",
     wallet,
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
@@ -122,6 +124,7 @@ export const sendAnnouncement = (
     role: "BOT",
     channel: channel,
     icon: "https://app.degencoinflip.com/logo192.png",
+    metadata,
   };
 
   const msgBuffer = Buffer.from(JSON.stringify(announcement));
@@ -149,7 +152,7 @@ const sendSystemMessage = (msg: string, ws: any, bot: boolean = false) => {
   const errorMsg: ChatDataMessage = {
     type: "ANNOUNCEMENT",
     message: msg || " ",
-    username: bot ? "Baby Coin" : "SYSTEM",
+    username: bot ? "" : "SYSTEM",
     wallet: bot ? "BOT" : "SYSTEM",
     color: CHAT_COLOR.ORANGE,
     timestamp: Date.now(),
@@ -173,7 +176,7 @@ const broadcastBotMessage = (msg: string, channel: number) => {
     const broadcastMsg: ChatDataMessage = {
       type: "MSG",
       message: msg,
-      username: "Baby Coin",
+      username: "",
       wallet: "BOT", // TODO hide for normal users?
       timestamp: Date.now(),
       color: CHAT_COLOR.ORANGE,
@@ -244,13 +247,13 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
 
       const maxLength = 200;
       const replyAI = await askAI(
-        `You're giving out RFP (risk-free-plays) to positive chat members in DCF, a crypto degen community that's casual and fun with understated humor. This is crash chat - a crash game that simulates meme coin trading on a chart interface. Winners are chosen based on recent games played or chat activity. Not all winners participate in the chat.
+        `You're giving out RFP (risk-free-plays) to community members in DCF, a crypto degen community that's casual and fun with understated humor. This is a crash game that simulates meme coin trading on a chart interface. Winners are chosen based on recent games played or chat activity. Not all winners participate in the chat.
 
 Community context: We're self-aware about crypto/gambling culture. Some crypto terms work naturally (like "diamond hands"), but avoid forced clichés like "HODL," "wen moon," or "bags" that don't apply to crash games.
 
-Game lingo (use sparingly): "Crashley" = the crash game personified, "greens" = wins above 200%, "golds" = big wins above 10,000%, "gaps" = periods with no wins, "devs sold" = when chart crashes.
-
-Write a 75-125 character message congratulating these ${playerNames.length} winners for positive behavior in chat. Don't mention specific things they said or did - keep it general about good vibes/community spirit.
+Game lingo (use sparingly): "" = the crash game personified, "greens" = wins above 200%, "golds" = big wins above 10,000%, "gaps" = periods with no wins, "devs sold" = when chart crashes.
+You can make references to our other games like: "Maybe try 'degen coin flip' to win it all back, play some rounds of 'degen spin', drop some coins in 'degen coin dozer' OR reach the top of 'degen towers' to get a big multiplier."
+Write a 75-125 character message congratulating these ${playerNames.length} winners. Don't mention specific things they said or did - keep it general about good vibes/community spirit. Try to make it funny if possible.
 
 Style (pick randomly, examples are style guides not templates):
 - 45% chance: Straightforward and casual 
@@ -317,7 +320,7 @@ const handleCommand = async (
 
       const broadcastMsg: ChatDataMessage = {
         type: "MSG",
-        message: `Baby Coin, ${subCommand}`,
+        message: `, ${subCommand}`,
         username: chatProfile.nickname,
         wallet: chatProfile.walletId, // TODO hide for normal users?
         timestamp: Date.now(),

@@ -15,6 +15,12 @@ export enum CHAT_COLOR {
   PINK = 7,
 }
 
+export type ChatMetaData = {
+  type?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+};
+
 export interface ChatDataMessage {
   type: string;
   message: string;
@@ -26,6 +32,7 @@ export interface ChatDataMessage {
   role: string;
   channel?: number;
   icon?: string;
+  metadata?: ChatMetaData;
 }
 
 export interface ChatProfile {

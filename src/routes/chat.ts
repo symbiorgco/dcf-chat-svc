@@ -14,6 +14,7 @@ import { logChatReport } from "../utils/modLogging";
 import NodeCache from "node-cache";
 import { verifyTransaction } from "../plugins/solana";
 import { fetchPersonasProfile } from "../plugins/personas";
+import { ChatMetaData } from "../utils/types";
 
 const reportIntervalCache = new NodeCache({
   stdTTL: 10, // 1 message per second
@@ -146,13 +147,18 @@ router.post("/send_announcement", async (req, res) => {
       const message = req.body.message as string;
       const wallet = req.body.wallet as string;
 
+      let metadata: ChatMetaData | undefined;
+      if (req.body.metadata) {
+        metadata = req.body.metadata as ChatMetaData;
+      }
+
       switch (type) {
         case "ALL":
-          sendAnnouncement(message, wallet, true);
+          sendAnnouncement(message, wallet, true, metadata);
           break;
         case "SOLO":
         default:
-          sendAnnouncement(message, wallet, false);
+          sendAnnouncement(message, wallet, false, metadata);
           break;
       }
 
@@ -197,7 +203,13 @@ router.post("/request_tip_announcement", async (req, res) => {
             player.nickname
           }!`,
           "SYSTEM",
-          true
+          true,
+          {
+            type: "tip",
+            amount: txResult.sol.toFixed(2),
+            from: chatProfile.nickname,
+            to: player.nickname,
+          }
         );
         parsedTXs.push(tx);
         res.json({ completed: true });
