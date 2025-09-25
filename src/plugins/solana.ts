@@ -110,7 +110,7 @@ export const verifyTransaction = async (
       return undefined;
     }
 
-    if (balatoWallet.lamports < 500_000) {
+    if (balatoWallet.lamports < 50_000) {
       console.log("Balato wallet did not receive enough");
       return undefined;
     }
