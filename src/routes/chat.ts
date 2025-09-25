@@ -199,14 +199,14 @@ router.post("/request_tip_announcement", async (req, res) => {
       if (txResult) {
         const player = await fetchPersonasProfile(txResult.pubkey);
         sendAnnouncement(
-          `${chatProfile.nickname} tipped ${txResult.sol.toFixed(2)} SOL to ${
+          `${chatProfile.nickname} tipped ${txResult.sol.toFixed(3)} SOL to ${
             player.nickname
           }!`,
           "SYSTEM",
           true,
           {
             type: "tip",
-            amount: txResult.sol.toFixed(2),
+            amount: txResult.sol.toFixed(3),
             from: chatProfile.nickname,
             to: player.nickname,
           }
