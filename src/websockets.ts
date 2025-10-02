@@ -696,6 +696,7 @@ const updateViewers = () => {
         nickname: profile.nickname,
         role: profile.role,
         profileImageUrl: profile.profileImageUrl,
+        walletId: profile.walletId,
       };
     });
 
