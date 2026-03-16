@@ -79,6 +79,23 @@ export let viewers = 0;
 const playerList = new Map<number, ChatProfile>();
 export let playerProfiles = [];
 
+wssAuthenticated.on("error", (err) => {
+  logger.error("[WSS Authenticated] Server error");
+  logger.error(err);
+});
+
+wssViewers.on("error", (err) => {
+  logger.error("[WSS Viewers] Server error");
+  logger.error(err);
+});
+
+wssViewers.on("connection", (ws) => {
+  ws.on("error", (err) => {
+    logger.error("[WSS Viewers] Client error");
+    logger.error(err);
+  });
+});
+
 export const broadcastMessage = (msg: Buffer) => {
   wssAuthenticated.clients.forEach(async (client) => {
     try {
@@ -110,7 +127,7 @@ export const sendAnnouncement = (
   wallet: string,
   sendToAll: boolean,
   metadata: ChatMetaData = undefined,
-  channel: number = 999
+  channel: number = 999,
 ) => {
   currentId++;
   const announcement: ChatDataMessage = {
@@ -132,7 +149,7 @@ export const sendAnnouncement = (
   logger.info(
     `Announcement ${msg} - ${wallet} - ${
       sendToAll ? "To all" : "To Wallet only"
-    }`
+    }`,
   );
 
   if (sendToAll) {
@@ -224,7 +241,7 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
           .map((value) => ({ value, sort: Math.random() }))
           .sort((a, b) => a.sort - b.sort)
           .map(({ value }) => value)
-          .slice(0, amountOfPlayers)
+          .slice(0, amountOfPlayers),
       ),
     ];
 
@@ -236,7 +253,7 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
       // Get player names
       const playerNames = (
         await Promise.all(
-          shuffled.map((walletId) => fetchPersonasProfile(walletId))
+          shuffled.map((walletId) => fetchPersonasProfile(walletId)),
         )
       ).map((profile) => {
         if (profile) {
@@ -262,7 +279,7 @@ Style (pick randomly, examples are style guides not templates):
 - 12% chance: Self-aware about community 
 - 8% chance: Backhanded compliment toward non-winners (example: "Player1 and Player2 staying positive unlike certain others, RFP sent").
 
-Sound like a community member, not a bot. No excessive emojis. Winners: ${playerNames}`
+Sound like a community member, not a bot. No excessive emojis. Winners: ${playerNames}`,
       );
 
       const grantRFPresult = await grantRFP(shuffled, 0.01);
@@ -271,18 +288,18 @@ Sound like a community member, not a bot. No excessive emojis. Winners: ${player
         if (replyAI) {
           broadcastBotMessage(
             `${replyAI.text.slice(0, maxLength + 25)}`,
-            channel
+            channel,
           );
         } else {
           broadcastBotMessage(
             `Let's rain some RFP to ${playerNames.join(" and ")}`,
-            channel
+            channel,
           );
         }
       } else {
         broadcastBotMessage(
           `I tried giving out some RFPs but it failed! I will talk to the devs and I will try again later!`,
-          channel
+          channel,
         );
       }
     }
@@ -292,14 +309,17 @@ Sound like a community member, not a bot. No excessive emojis. Winners: ${player
 
   //Redo when not triggered manually
   if (!ws) {
-    setTimeout(async () => {
-      try {
-        console.log("Trigger send RFP!");
-        await handleSendRFP(0);
-      } catch (err) {
-        console.log("Error handling RFP");
-      }
-    }, 1_100_000 + Math.round(Math.random() * 200_000));
+    setTimeout(
+      async () => {
+        try {
+          console.log("Trigger send RFP!");
+          await handleSendRFP(0);
+        } catch (err) {
+          console.log("Error handling RFP");
+        }
+      },
+      1_100_000 + Math.round(Math.random() * 200_000),
+    );
   }
 };
 
@@ -307,7 +327,7 @@ const handleCommand = async (
   command: string,
   ws: WebSocket,
   channel: number,
-  chatProfile: ChatProfile
+  chatProfile: ChatProfile,
 ) => {
   try {
     if (command.startsWith("q")) {
@@ -337,7 +357,7 @@ const handleCommand = async (
       /// END TODO
 
       const response = await askAI(
-        subCommand + " and limit your reply to max 175 characters."
+        subCommand + " and limit your reply to max 175 characters.",
       );
       if (response && response.text) {
         const reply = response.text;
@@ -362,7 +382,7 @@ const handleCommand = async (
       const response = await askAI(
         subCommand +
           " And provide 1 wallet ID if applicable. " +
-          JSON.stringify(parsedChatMessages)
+          JSON.stringify(parsedChatMessages),
       );
       if (response && response.text) {
         const reply = response.text;
@@ -380,7 +400,7 @@ const handleCommand = async (
       sendSystemMessage(`used /game: ${subCommand}`, ws, true);
 
       const response = await axios.get(
-        `https://api.dealer.degencoinflip.com/v1/game/2/room/1/rounds?limit=100`
+        `https://api.dealer.degencoinflip.com/v1/game/2/room/1/rounds?limit=100`,
       );
       const totalGames = response.data.payload as GameResult[];
 
@@ -395,12 +415,12 @@ const handleCommand = async (
               (Number.parseFloat(
                 (
                   BigInt(player.reward.split(".")[0]) / BigInt(1_000_000)
-                ).toString()
+                ).toString(),
               ) -
                 Number.parseFloat(
                   (
                     BigInt(player.lamports.split(".")[0]) / BigInt(1_000_000)
-                  ).toString()
+                  ).toString(),
                 )) /
               1000,
             username: player.username,
@@ -412,7 +432,7 @@ const handleCommand = async (
       const responseAI = await askAI(
         subCommand +
           ". And provide 1 wallet ID if applicable. This is the data of last 100 rounds of the crash game: " +
-          JSON.stringify(parsedGames)
+          JSON.stringify(parsedGames),
       );
       if (responseAI && responseAI.text) {
         const reply = responseAI.text;
@@ -441,7 +461,7 @@ let uniqueId = 0;
 const handleSendMessage = async (
   chatProfile: ChatProfile,
   ws: any,
-  message: ChatDataRequestMessage
+  message: ChatDataRequestMessage,
 ) => {
   intervalCache.set(chatProfile.walletId, true);
 
@@ -453,7 +473,7 @@ const handleSendMessage = async (
     if (!(await verifyIfCanChat(chatProfile.walletId))) {
       sendSystemMessage(
         "Spam protection. You need to play at least 0.01 SOL last 7 days to chat. Refresh or try again",
-        ws
+        ws,
       );
 
       return;
@@ -474,13 +494,13 @@ const handleSendMessage = async (
 
         const verifiedMessage = verifyMessage(
           message.message,
-          isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId)
+          isAdmin(chatProfile.walletId) || isMod(chatProfile.walletId),
         );
 
         if (verifiedMessage.error) {
           sendSystemMessage(
             `Error sending your message: ${verifiedMessage.errorMessage}`,
-            ws
+            ws,
           );
         } else {
           if (
@@ -494,7 +514,7 @@ const handleSendMessage = async (
                 verifiedMessage.msg.substring(1),
                 ws,
                 message.channel,
-                chatProfile
+                chatProfile,
               );
             }
           } else {
@@ -504,7 +524,7 @@ const handleSendMessage = async (
             let color: CHAT_COLOR = getColorForRole("MEMBER");
             if (chatProfile.role === "HELPFUL_DEGEN") {
               const leaderboardEntry = getLeaderboardEntry(
-                chatProfile.walletId
+                chatProfile.walletId,
               );
 
               if (leaderboardEntry) {
@@ -558,7 +578,7 @@ wssAuthenticated.on(
     const playerId = uniqueId;
     try {
       logger.info(
-        `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`
+        `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
       );
       playerList.set(playerId, chatProfile);
       const chatProfileMSG: ChatDataMessage = {
@@ -581,13 +601,13 @@ wssAuthenticated.on(
       });
       ws.on("close", function close() {
         logger.info(
-          `[WS] Player disconnected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`
+          `[WS] Player disconnected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
         );
         playerList.delete(playerId);
       });
       ws.on("error", function error(err) {
         logger.error(
-          `[WS] Player error ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`
+          `[WS] Player error ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
         );
         playerList.delete(playerId);
       });
@@ -608,7 +628,7 @@ wssAuthenticated.on(
               }
               sendSystemMessage(
                 `Banned wallet ${msg.message}: ${banned ? "TRUE" : "FALSE"}`,
-                ws
+                ws,
               );
             }
           } else if (msg.type === "REMOVE") {
@@ -646,7 +666,7 @@ wssAuthenticated.on(
                 `Timed out wallet ${msg.message}: ${
                   timedOut ? "TRUE" : "FALSE"
                 }`,
-                ws
+                ws,
               );
             }
           } else if (msg.type === "UNBAN") {
@@ -663,7 +683,7 @@ wssAuthenticated.on(
                 `Unbanned wallet ${msg.message}: ${
                   unbanned ? "TRUE" : "FALSE"
                 }`,
-                ws
+                ws,
               );
             }
           }
@@ -676,7 +696,7 @@ wssAuthenticated.on(
       playerList.delete(playerId);
       logger.error(err as Error);
     }
-  }
+  },
 );
 
 const updateViewers = () => {
@@ -701,7 +721,7 @@ const updateViewers = () => {
     });
 
     logger.info(
-      `[STATS] Total connected clients: ${viewers} - Players: ${filteredArr.length}`
+      `[STATS] Total connected clients: ${viewers} - Players: ${filteredArr.length}`,
     );
   } catch (err) {
     logger.error("Error updating viewers");
