@@ -37,6 +37,8 @@ export const grantRFP = async (
   }
 };
 
+const MIN_BET_LAMPORTS = 10_000_000; // 0.01 SOL
+
 const getPlayersWithMostRoundsPlayed = (
   gameResult: GameResult[],
   delta: number
@@ -45,10 +47,12 @@ const getPlayersWithMostRoundsPlayed = (
 
   gameResult.forEach((game) => {
     Object.values(game.players).forEach((player) => {
-      playerRoundCount.set(
-        player.pubkey,
-        (playerRoundCount.get(player.pubkey) || 0) + 1
-      );
+      if (Number.parseInt(player.lamports) >= MIN_BET_LAMPORTS) {
+        playerRoundCount.set(
+          player.pubkey,
+          (playerRoundCount.get(player.pubkey) || 0) + 1
+        );
+      }
     });
   });
 
@@ -81,7 +85,10 @@ const getPlayerWithMostLostRounds = (
 
   gameResult.forEach((game) => {
     Object.values(game.players).forEach((player) => {
-      if (Number.parseInt(player.reward) || 0 === 0) {
+      if (
+        Number.parseInt(player.lamports) >= MIN_BET_LAMPORTS &&
+        (Number.parseInt(player.reward) || 0) === 0
+      ) {
         playerLostCount.set(
           player.pubkey,
           (playerLostCount.get(player.pubkey) || 0) + 1

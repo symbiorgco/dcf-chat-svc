@@ -291,10 +291,34 @@ Sound like a community member, not a bot. No excessive emojis. Winners: ${player
             channel,
           );
         } else {
-          broadcastBotMessage(
-            `Let's rain some RFP to ${playerNames.join(" and ")}`,
-            channel,
-          );
+          const names = playerNames.join(" and ");
+          const openers = [
+            `RFP incoming to ${names}!`,
+            `Dropping some RFPs on ${names}.`,
+            `${names} just got blessed with RFP.`,
+            `Free plays for ${names}!`,
+            `${names} — RFP secured.`,
+            `0.01 SOL RFPs hitting ${names} right now.`,
+            `0.01 SOL RFPs for ${names}.`,
+            `${names} picking up some well-deserved RFP.`,
+            `Who deserves RFP? ${names} do.`,
+            `${names} — the chart gods smile upon you.`,
+          ];
+          const closers = [
+            `You earned it`,
+            `Stay degen`,
+            `LFG`,
+            `Keep playing!`,
+            `Don't waste it`,
+            `Enjoy the free rounds`,
+            `Let's go`,
+            `RFP granted`,
+            `Time to flip`,
+            `Make it count`,
+          ];
+          const opener = openers[Math.floor(Math.random() * openers.length)];
+          const closer = closers[Math.floor(Math.random() * closers.length)];
+          broadcastBotMessage(`${opener} ${closer}`, channel);
         }
       } else {
         broadcastBotMessage(
