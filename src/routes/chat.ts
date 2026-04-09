@@ -49,9 +49,11 @@ router.get("/get_history", async (req, res) => {
 
 router.get("/get_history_all", async (req, res) => {
   try {
+    const messages = Object.fromEntries(recentChatMessages);
+    messages[999] = [];
     res.json({
       completed: true,
-      messages: Object.fromEntries(recentChatMessages),
+      messages,
     });
   } catch (err) {
     res.json({ error: true });

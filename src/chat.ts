@@ -18,8 +18,7 @@ export enum CHAT_CHANNEL {
   DOZER = 1,
   TOWERS = 2,
   COINFLIP = 3,
-  PLACEHOLDER1 = 4,
-  PLACEHOLDER2 = 5,
+  GENERAL = 4,
   ANNOUNCEMENTS = 999,
 }
 
@@ -27,8 +26,7 @@ recentChatMessages.set(CHAT_CHANNEL.CRASH, []); // Crash
 recentChatMessages.set(CHAT_CHANNEL.DOZER, []); // Dozer
 recentChatMessages.set(CHAT_CHANNEL.TOWERS, []); // Towers
 recentChatMessages.set(CHAT_CHANNEL.COINFLIP, []); // Coinflip
-recentChatMessages.set(CHAT_CHANNEL.PLACEHOLDER1, []); // Placeholder 1
-recentChatMessages.set(CHAT_CHANNEL.PLACEHOLDER2, []); // Placeholder 2
+recentChatMessages.set(CHAT_CHANNEL.GENERAL, []); // General
 recentChatMessages.set(CHAT_CHANNEL.ANNOUNCEMENTS, []); // Announcements
 
 const filter = new Filter({ emptyList: true });
@@ -37,7 +35,7 @@ filter.addWords(...badWords.words);
 const BANNED_USER_FILE = "./banned.json";
 
 export let bannedUsers = JSON.parse(
-  fs.readFileSync(BANNED_USER_FILE, "utf-8")
+  fs.readFileSync(BANNED_USER_FILE, "utf-8"),
 ) as string[];
 
 const timedOutCache = new NodeCache({
@@ -82,7 +80,7 @@ export const isBanned = (wallet: string): boolean => {
 
 export const verifyMessage = (
   msg: string,
-  skipFiltering = false
+  skipFiltering = false,
 ): VerifiedMessage => {
   try {
     //Rule 1 Char count
@@ -106,7 +104,7 @@ export const verifyMessage = (
     //Rule 2 regex
     const msgRegex = msgWordCounted.replace(
       /[^\x20-\x7E\u2019\ud000-\udfff]/gi,
-      "?"
+      "?",
     );
 
     //Rule 3 filter bad words
@@ -142,7 +140,7 @@ export const addChatMessage = (msg: ChatDataMessage, channel: number = 0) => {
   const recentMsg = recentChatMessages.get(channel);
   if (!recentMsg) {
     logger.warn(
-      `Channel doesnt exist: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`
+      `Channel doesnt exist: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`,
     );
     return;
   }
@@ -153,7 +151,7 @@ export const addChatMessage = (msg: ChatDataMessage, channel: number = 0) => {
   recentMsg.push(msg);
   recentChatMessagesForAI.push(msg);
   logger.info(
-    `CHAT: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`
+    `CHAT: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`,
   );
 };
 
