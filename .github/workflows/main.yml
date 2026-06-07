@@ -64,13 +64,13 @@ jobs:
         id: vars
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-          echo "::set-output name=branch::$(echo ${GITHUB_HEAD_REF##*/})"
+          echo "::set-output name=branch::$(echo ${GITHUB_HEAD_REF:-$GITHUB_REF_NAME} | tr '/' '-')"
       - name: Docker Build
         run: |
           docker build . --build-arg VERSION=${{ steps.vars.outputs.sha_short }} --file Dockerfile --tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }}
-          docker tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }} dcfhermes/dcf-chat-svc:${{ env.BRANCH_NAME }}
+          docker tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }} dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.branch }}
           docker push dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }}
-          docker push dcfhermes/dcf-chat-svc:${{ env.BRANCH_NAME }}
+          docker push dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.branch }}
       - name: Notify discord
         uses: th0th/notify-discord@v0.4.1
         if: ${{ always() }}
