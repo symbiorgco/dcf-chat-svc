@@ -1,25 +1,34 @@
-import pino from "pino";
+import pino, { type TransportTargetOptions } from "pino";
 import * as dotenv from "dotenv";
 dotenv.config();
 
+const targets: TransportTargetOptions[] = [
+  {
+    target: "pino-pretty",
+    options: {
+      destination: `./app.log`,
+      translateTime: "UTC:yyyy-mm-dd HH:MM:ss.l",
+    },
+  },
+];
+
+const axiomOrgId = process.env.AXIOM_ORG_ID;
+const axiomToken = process.env.AXIOM_TOKEN;
+const axiomDataset = process.env.AXIOM_DATASET;
+
+if (axiomOrgId && axiomToken && axiomDataset) {
+  targets.push({
+    target: "pino-axiom",
+    options: {
+      orgId: axiomOrgId,
+      token: axiomToken,
+      dataset: axiomDataset,
+    },
+  });
+}
+
 const transport = pino.transport({
-  targets: [
-    {
-      target: "pino-pretty",
-      options: {
-        destination: `./app.log`,
-        translateTime: "UTC:yyyy-mm-dd HH:MM:ss.l",
-      },
-    },
-    {
-      target: "pino-axiom",
-      options: {
-        orgId: "web-omega-r4fd", // Can be found on settings page
-        token: "xaat-1f474563-86eb-4eda-ade5-0cb4f4b85612", // Can be generated on settings > API Tokens
-        dataset: "dcf_chat", // Can be created on /datasets
-      },
-    },
-  ],
+  targets,
 });
 
 const baseLogger = pino(
