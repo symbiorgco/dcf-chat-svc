@@ -1,81 +1,105 @@
 name: Chat Service CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # Test:
-  #   # The type of runner that the job will run on
-  #   runs-on: ubuntu-latest
+  test:
+    name: Test / READY Evidence
+    runs-on: ubuntu-latest
+    env:
+      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    outputs:
+      ready_eligible: ${{ steps.evidence.outputs.ready_eligible }}
+      classification: ${{ steps.evidence.outputs.classification }}
+      checkout_sha: ${{ steps.sha.outputs.checkout_sha }}
+    steps:
+      - name: Checkout PR SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-  #   # Steps represent a sequence of tasks that will be executed as part of the job
-  #   steps:
-  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
+      - name: Assert checked out SHA
+        id: sha
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "checkout_sha=${actual_sha}" >> "$GITHUB_OUTPUT"
+          if [ "$actual_sha" != "$EXPECTED_SHA" ]; then
+            echo "Expected $EXPECTED_SHA but checked out $actual_sha" >&2
+            exit 1
+          fi
 
-  #     - name: Setup node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version-file: .nvmrc
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-  #     - name: Cache dependencies
-  #       uses: actions/cache@v2
-  #       with:
-  #         path: ~/.npm
-  #         key: npm-${{ hashFiles('package-lock.json') }}
-  #         restore-keys: npm-
+      - name: Install Dependencies
+        run: npm ci
 
-  #     - name: Install Dependencies
-  #       run: |
-  #         yarn install --frozen-lockfile
+      - name: Build / Typecheck
+        run: npm run build
 
-  #     - name: Run Test
-  #       run: |
-  #         yarn test:ci
+      - name: Run Tests
+        run: |
+          set -o pipefail
+          npm run test:ci | tee test-output.tap
+
+      - name: Generate READY Evidence
+        id: evidence
+        env:
+          CHECKOUT_SHA: ${{ steps.sha.outputs.checkout_sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: node scripts/generate-ready-evidence.js
+
+      - name: Upload READY Evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ready-evidence
+          path: ready-evidence.json
+
   Build:
-    # The type of runner that the job will run on
+    name: Docker Build / Publish
+    needs: test
+    if: ${{ github.event_name != 'pull_request' && needs.test.outputs.ready_eligible == 'true' }}
     runs-on: ubuntu-latest
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Docker Login
-        # You may pin to the exact commit or the version.
-        # uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
-        uses: docker/login-action@v1.14.1
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          # Username used to log against the Docker registry
+          ref: ${{ github.sha }}
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
           username: dcfhermes
           password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Checkout
-        uses: actions/checkout@v2
+
       - name: Set outputs
         id: vars
         run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-          echo "::set-output name=branch::$(echo ${GITHUB_HEAD_REF:-$GITHUB_REF_NAME} | tr '/' '-')"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "branch=$(echo ${GITHUB_HEAD_REF:-$GITHUB_REF_NAME} | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
       - name: Docker Build
         run: |
           docker build . --build-arg VERSION=${{ steps.vars.outputs.sha_short }} --file Dockerfile --tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }}
           docker tag dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }} dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.branch }}
           docker push dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.sha_short }}
           docker push dcfhermes/dcf-chat-svc:${{ steps.vars.outputs.branch }}
+
       - name: Notify discord
         uses: th0th/notify-discord@v0.4.1
         if: ${{ always() }}
         env:
-          DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/1198054557092155482/7kmVtBiE_-ZjzfmRP1fCjaiqmRGgxrpJlbBa6SrzaD0SHRTj_HGxWaxdxdo9-hqpLcy_
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_JOB_NAME: 'Chat Service Docker Container Build/Publish - ${{ env.BRANCH_NAME }}'
           GITHUB_JOB_STATUS: ${{ job.status }}
