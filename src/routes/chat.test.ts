@@ -56,3 +56,51 @@ test("chat/mod actions require auth/admin boundary: admin-only actions accept ad
 
   assert.equal(authorized, true);
 });
+
+test("chat/mod actions require auth/admin boundary: unauthenticated requests reject when internal secret is unset", async () => {
+  const { isSendAnnouncementAuthorized } = await import("./chatGuards");
+  const originalInternalKey = process.env.INTERNAL_KEY;
+  delete process.env.INTERNAL_KEY;
+
+  try {
+    // Pins the fail-closed fix: with no auth header, no internal-key header,
+    // and no configured INTERNAL_KEY, the legacy `header === secret` check
+    // compared undefined === undefined and authorized the request.
+    const authorized = await isSendAnnouncementAuthorized({
+      authKey: undefined,
+      internalKey: undefined,
+    });
+
+    assert.equal(authorized, false);
+  } finally {
+    if (originalInternalKey === undefined) {
+      delete process.env.INTERNAL_KEY;
+    } else {
+      process.env.INTERNAL_KEY = originalInternalKey;
+    }
+  }
+});
+
+test("chat/mod actions require auth/admin boundary: wrong internal key rejects announcements", async () => {
+  const { isSendAnnouncementAuthorized } = await import("./chatGuards");
+
+  const authorized = await isSendAnnouncementAuthorized({
+    authKey: undefined,
+    internalKey: "wrong-secret",
+    internalSecret: "configured-secret",
+  });
+
+  assert.equal(authorized, false);
+});
+
+test("chat/mod actions require auth/admin boundary: matching internal key authorizes announcements", async () => {
+  const { isSendAnnouncementAuthorized } = await import("./chatGuards");
+
+  const authorized = await isSendAnnouncementAuthorized({
+    authKey: undefined,
+    internalKey: "configured-secret",
+    internalSecret: "configured-secret",
+  });
+
+  assert.equal(authorized, true);
+});
