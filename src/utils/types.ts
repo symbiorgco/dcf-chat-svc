@@ -39,6 +39,7 @@ export interface ChatProfile {
   walletId: string;
   profileImageUrl: string;
   nickname: string;
+  privateMode?: boolean;
   role: string;
   authToken?: string;
 }
