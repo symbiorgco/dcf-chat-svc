@@ -8,7 +8,9 @@
     "dev": "npx ts-node src/app.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:public-profile": "node --test dist/tests/publicChatProfile.test.js",
-    "test:public-profile:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/publicChatProfile.test.ts"
+    "test:public-profile:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/publicChatProfile.test.ts",
+    "test:announcements": "node --test dist/tests/announcements.test.js",
+    "test:announcements:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/announcements.test.ts"
   },
   "author": "",
   "license": "ISC",

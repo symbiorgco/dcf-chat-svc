@@ -1,5 +1,30 @@
-// Allows `node --import ./tests/ts-extension-resolver.mjs --test tests/*.test.ts`
-// to work without a build step by hooking TypeScript extension loading.
-import { register } from "node:module";
-import { pathToFileURL } from "node:url";
-register("ts-node/esm", pathToFileURL("./"));
+import { existsSync } from "node:fs";
+import { registerHooks } from "node:module";
+import { fileURLToPath } from "node:url";
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    try {
+      return nextResolve(specifier, context);
+    } catch (error) {
+      const canTryTsExtension =
+        error?.code === "ERR_MODULE_NOT_FOUND" &&
+        context.parentURL &&
+        (specifier.startsWith("./") || specifier.startsWith("../"));
+
+      if (!canTryTsExtension) {
+        throw error;
+      }
+
+      const tsUrl = new URL(`${specifier}.ts`, context.parentURL);
+      if (!existsSync(fileURLToPath(tsUrl))) {
+        throw error;
+      }
+
+      return {
+        shortCircuit: true,
+        url: tsUrl.href,
+      };
+    }
+  },
+});

@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
 import { askAI } from "./plugins/ai";
+import { getPublicRfpWinnerNames } from "./announcements";
 import { fetchPersonasProfile } from "./plugins/personas";
 import { grantRFP, pickPlayersForRFP } from "./plugins/rfp";
 import { toPublicChatProfile } from "./publicChatProfile";
@@ -28,6 +29,7 @@ import {
   recentChatMessages,
   removeChatMessage,
   timeoutUser,
+  toPublicChatProfile,
   unbanUser,
   verifyMessage,
 } from "./chat";
@@ -252,16 +254,15 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
       }
 
       // Get player names
-      const playerNames = (
-        await Promise.all(
-          shuffled.map((walletId) => fetchPersonasProfile(walletId)),
-        )
-      ).map((profile) => {
-        if (profile) {
-          return profile.nickname;
-        }
-        return "UNKNOWN";
-      });
+      const winnerProfiles = await Promise.all(
+        shuffled.map((walletId) => fetchPersonasProfile(walletId)),
+      );
+      const playerNames = getPublicRfpWinnerNames(
+        shuffled.map((walletId, index) => ({
+          walletId,
+          profile: winnerProfiles[index],
+        })),
+      );
 
       const maxLength = 200;
       const replyAI = await askAI(

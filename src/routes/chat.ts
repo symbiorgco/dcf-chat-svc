@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { playerProfiles, sendAnnouncement, viewers } from "../websockets";
+import { buildPublicTipAnnouncement } from "../announcements";
 import {
   bannedUsers,
   getChatMessageAuthorWallet,
@@ -205,18 +206,24 @@ router.post("/request_tip_announcement", async (req, res) => {
       const txResult = await verifyTransaction(300, tx);
       if (txResult) {
         const player = await fetchPersonasProfile(txResult.pubkey);
+        if (!player) {
+          console.log("Tip recipient profile could not be fetched");
+          res.json({ error: true });
+          return;
+        }
+        const tipAnnouncement = buildPublicTipAnnouncement(
+          chatProfile,
+          {
+            ...player,
+            walletId: txResult.pubkey,
+          },
+          txResult.sol
+        );
         sendAnnouncement(
-          `${chatProfile.nickname} tipped ${txResult.sol.toFixed(3)} SOL to ${
-            player.nickname
-          }!`,
+          tipAnnouncement.message,
           "SYSTEM",
           true,
-          {
-            type: "tip",
-            amount: txResult.sol.toFixed(3),
-            from: chatProfile.nickname,
-            to: player.nickname,
-          }
+          tipAnnouncement.metadata
         );
         parsedTXs.push(tx);
         res.json({ completed: true });

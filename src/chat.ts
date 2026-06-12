@@ -10,6 +10,7 @@ import admins from "./admins.json";
 import mods from "./mods.json";
 import helpfulDegens from "./helpful_degens.json";
 import { recentChatMessagesForAI } from "./plugins/ai";
+export { toPublicChatProfile } from "./publicChatProfile";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
 const chatMessageAuthorWallets = new Map<string, string>();
