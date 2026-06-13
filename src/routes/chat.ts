@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { playerProfiles, sendAnnouncement, viewers } from "../websockets";
+import { playerProfiles, sendAnnouncement, viewers, getConnectedPlayerPrivateMode } from "../websockets";
 import { buildPublicTipAnnouncement } from "../announcements";
 import {
   bannedUsers,
@@ -216,6 +216,8 @@ router.post("/request_tip_announcement", async (req, res) => {
           {
             ...player,
             walletId: txResult.pubkey,
+            // Populate privateMode from connected-player cache; personas API does not carry this field
+            privateMode: getConnectedPlayerPrivateMode(txResult.pubkey),
           },
           txResult.sol
         );

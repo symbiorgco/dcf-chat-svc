@@ -82,6 +82,16 @@ export let viewers = 0;
 const playerList = new Map<number, ChatProfile>();
 export let playerProfiles = [];
 
+// Returns the privateMode for a connected player by walletId (undefined if not connected)
+export const getConnectedPlayerPrivateMode = (walletId: string): boolean | undefined => {
+  for (const profile of playerList.values()) {
+    if (profile.walletId === walletId) {
+      return profile.privateMode;
+    }
+  }
+  return undefined;
+};
+
 wssAuthenticated.on("error", (err) => {
   logger.error("[WSS Authenticated] Server error");
   logger.error(err);
@@ -234,16 +244,16 @@ export interface Player {
 
 const handleSendRFP = async (channel: number, ws: any = undefined) => {
   try {
-    const playerList = await pickPlayersForRFP();
+    const rfpWallets = await pickPlayersForRFP();
 
     const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
 
     let shuffled = [
       ...new Set(
-        playerList
-          .map((value) => ({ value, sort: Math.random() }))
+        rfpWallets
+          .map((walletId) => ({ walletId, sort: Math.random() }))
           .sort((a, b) => a.sort - b.sort)
-          .map(({ value }) => value)
+          .map(({ walletId }) => walletId)
           .slice(0, amountOfPlayers),
       ),
     ];
@@ -253,9 +263,14 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
         sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
       }
 
-      // Get player names
+      // Get player names — populate privateMode from connected-player cache so
+      // private-mode users are masked in the public announcement.
       const winnerProfiles = await Promise.all(
-        shuffled.map((walletId) => fetchPersonasProfile(walletId)),
+        shuffled.map(async (walletId) => {
+          const persona = await fetchPersonasProfile(walletId);
+          if (!persona) return undefined;
+          return { ...persona, privateMode: getConnectedPlayerPrivateMode(walletId) };
+        }),
       );
       const playerNames = getPublicRfpWinnerNames(
         shuffled.map((walletId, index) => ({
