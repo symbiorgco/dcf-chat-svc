@@ -160,3 +160,58 @@ test("RFP winner masked when privateMode populated from connected-player lookup 
     "private winner nickname must not appear in RFP broadcast",
   );
 });
+
+// Offline / disconnected user path: getConnectedPlayerPrivateMode returns undefined,
+// caller applies ?? true (fail-closed). These tests verify that fail-closed privateMode
+// correctly masks the user in announcements.
+
+test("tip recipient masked when offline — fail-closed privateMode (undefined ?? true → masked)", () => {
+  // Simulates: tip recipient is not connected to chat; getConnectedPlayerPrivateMode
+  // returns undefined; the route now applies ?? true so privateMode is true.
+  const projection = buildPublicTipAnnouncement(
+    publicSender,
+    {
+      nickname: "Offline Private User",
+      profileImageUrl: "https://example.com/offline.png",
+      walletId: "offline-wallet",
+      privateMode: true, // result of getConnectedPlayerPrivateMode(walletId) ?? true
+    },
+    0.25,
+  );
+
+  assert.equal(
+    projection.message.includes("Offline Private User"),
+    false,
+    "offline user nickname must not appear in tip announcement",
+  );
+  assert.equal(projection.metadata.to, "Anonymous Degen");
+});
+
+test("RFP winner masked when offline — fail-closed privateMode (undefined ?? true → masked)", () => {
+  // Simulates: RFP winner not connected; handler applies ?? true.
+  const playerNames = getPublicRfpWinnerNames([
+    {
+      walletId: "offline-winner-wallet",
+      profile: {
+        nickname: "Offline Private Winner",
+        profileImageUrl: "https://example.com/offline-winner.png",
+        privateMode: true, // result of getConnectedPlayerPrivateMode(walletId) ?? true
+      },
+    },
+    {
+      walletId: "connected-public-wallet",
+      profile: {
+        nickname: "Connected Public User",
+        profileImageUrl: "https://example.com/connected.png",
+        privateMode: false, // explicitly non-private: not masked
+      },
+    },
+  ]);
+
+  assert.equal(
+    playerNames.includes("Offline Private Winner"),
+    false,
+    "offline winner must be masked in RFP broadcast",
+  );
+  assert.equal(playerNames[1], "Connected Public User");
+});

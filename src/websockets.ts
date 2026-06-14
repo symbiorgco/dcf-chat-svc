@@ -264,12 +264,14 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
       }
 
       // Get player names — populate privateMode from connected-player cache so
-      // private-mode users are masked in the public announcement.
+      // private-mode users are masked in the public announcement. Fail-closed
+      // (?? true): if the winner is not connected, we cannot confirm their
+      // preference, so we mask them rather than leak a real nickname.
       const winnerProfiles = await Promise.all(
         shuffled.map(async (walletId) => {
           const persona = await fetchPersonasProfile(walletId);
           if (!persona) return undefined;
-          return { ...persona, privateMode: getConnectedPlayerPrivateMode(walletId) };
+          return { ...persona, privateMode: getConnectedPlayerPrivateMode(walletId) ?? true };
         }),
       );
       const playerNames = getPublicRfpWinnerNames(

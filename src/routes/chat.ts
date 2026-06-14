@@ -216,8 +216,10 @@ router.post("/request_tip_announcement", async (req, res) => {
           {
             ...player,
             walletId: txResult.pubkey,
-            // Populate privateMode from connected-player cache; personas API does not carry this field
-            privateMode: getConnectedPlayerPrivateMode(txResult.pubkey),
+            // Populate privateMode from connected-player cache; personas API does not carry this field.
+            // Fail-closed (?? true): if recipient is not connected we cannot confirm their preference,
+            // so we mask them rather than leak a real nickname in the public tip announcement.
+            privateMode: getConnectedPlayerPrivateMode(txResult.pubkey) ?? true,
           },
           txResult.sol
         );
