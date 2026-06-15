@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { askAI } from "./plugins/ai";
 import { fetchPersonasProfile } from "./plugins/personas";
 import { grantRFP, pickPlayersForRFP } from "./plugins/rfp";
+import { toPublicChatProfile } from "./publicChatProfile";
 import {
   CHAT_COLOR,
   ChatDataMessage,
@@ -44,29 +45,6 @@ export const wssAuthenticated = new WebSocketServer({
 //Settings - hardcoded;
 const commandsEnabled = false;
 const enableRfpSending = true; //turn off
-const ANONYMOUS_DEGEN_NAME = "Anonymous Degen";
-const ANONYMOUS_WALLET_ID = "ANONYMOUS";
-
-type PublicChatProfile = {
-  nickname: string;
-  profileImageUrl?: string;
-  walletId: string;
-};
-
-const toPublicChatProfile = (chatProfile: ChatProfile): PublicChatProfile => {
-  if (chatProfile.privateMode === true) {
-    return {
-      nickname: ANONYMOUS_DEGEN_NAME,
-      walletId: ANONYMOUS_WALLET_ID,
-    };
-  }
-
-  return {
-    nickname: chatProfile.nickname,
-    profileImageUrl: chatProfile.profileImageUrl,
-    walletId: chatProfile.walletId,
-  };
-};
 
 server.on("upgrade", async function upgrade(request, socket, head) {
   let chatProfile: ChatProfile = undefined;
