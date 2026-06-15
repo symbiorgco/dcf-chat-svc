@@ -45,12 +45,12 @@ const bannedBackup = backupFile(bannedStateFile);
 try {
   fs.writeFileSync(bannedStateFile, "[]\n", "utf-8");
 
-  const roles = require("../dist/roles");
-  const chat = require("../dist/chat");
-  const { getRole } = require("../dist/authentication");
-  const staticAdmins = require("../dist/admins.json");
-  const staticMods = require("../dist/mods.json");
-  const staticHelpfulDegens = require("../dist/helpful_degens.json");
+  const roles = require("../dist/src/roles");
+  const chat = require("../dist/src/chat");
+  const { getRole } = require("../dist/src/authentication");
+  const staticAdmins = require("../dist/src/admins.json");
+  const staticMods = require("../dist/src/mods.json");
+  const staticHelpfulDegens = require("../dist/src/helpful_degens.json");
 
   const seededRoles = roles.getRoles();
   assert.deepStrictEqual(seededRoles.ADMIN, staticAdmins);
