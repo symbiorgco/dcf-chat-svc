@@ -17,11 +17,11 @@ import { getRole, verifyIfCanChat, verifyJwt } from "./authentication";
 import {
   addChatMessage,
   banUser,
+  canModerateChat,
   getColorForRole,
   isAdmin,
   isAllowedToChat,
   isBanned,
-  isHelpfulDegen,
   isMod,
   isTimedOut,
   recentChatMessages,
@@ -641,11 +641,7 @@ wssAuthenticated.on(
           if (msg.type === "MSG" && !intervalCache.get(chatProfile.walletId)) {
             handleSendMessage(chatProfile, ws, msg);
           } else if (msg.type === "BAN") {
-            if (
-              isAdmin(chatProfile.walletId) ||
-              isMod(chatProfile.walletId) ||
-              isHelpfulDegen(chatProfile.walletId)
-            ) {
+            if (canModerateChat(chatProfile.walletId)) {
               const banned = banUser(msg.message, chatProfile.walletId);
               if (banned) {
                 logBan(chatProfile.nickname, msg.message);
@@ -656,11 +652,7 @@ wssAuthenticated.on(
               );
             }
           } else if (msg.type === "REMOVE") {
-            if (
-              isAdmin(chatProfile.walletId) ||
-              isMod(chatProfile.walletId) ||
-              isHelpfulDegen(chatProfile.walletId)
-            ) {
+            if (canModerateChat(chatProfile.walletId)) {
               const idToRemove = msg.message;
               const channel = msg.channel;
               const broadcastMsg: ChatDataMessage = {
@@ -677,11 +669,7 @@ wssAuthenticated.on(
               }
             }
           } else if (msg.type === "TIMEOUT") {
-            if (
-              isAdmin(chatProfile.walletId) ||
-              isMod(chatProfile.walletId) ||
-              isHelpfulDegen(chatProfile.walletId)
-            ) {
+            if (canModerateChat(chatProfile.walletId)) {
               const timedOut = timeoutUser(msg.message);
               if (timedOut) {
                 logTimeout(chatProfile.nickname, msg.message);
@@ -694,11 +682,7 @@ wssAuthenticated.on(
               );
             }
           } else if (msg.type === "UNBAN") {
-            if (
-              isAdmin(chatProfile.walletId) ||
-              isMod(chatProfile.walletId) ||
-              isHelpfulDegen(chatProfile.walletId)
-            ) {
+            if (canModerateChat(chatProfile.walletId)) {
               const unbanned = unbanUser(msg.message, chatProfile.walletId);
               if (unbanned) {
                 logUnban(chatProfile.nickname, msg.message);

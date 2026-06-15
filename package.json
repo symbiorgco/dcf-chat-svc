@@ -6,6 +6,7 @@
     "start": "npx ts-node src/app.ts",
     "build": "npx tsc",
     "dev": "npx ts-node src/app.ts",
+    "verify:roles": "npm run build && node scripts/verify_roles.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

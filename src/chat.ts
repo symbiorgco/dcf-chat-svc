@@ -4,11 +4,9 @@ import badWords from "./bad-words.json";
 import { logger } from "./logger";
 import fs from "fs";
 import NodeCache from "node-cache";
+import { hasRole } from "./roles";
 
 const MAX_MESSAGES_HISTORY = 75;
-import admins from "./admins.json";
-import mods from "./mods.json";
-import helpfulDegens from "./helpful_degens.json";
 import { recentChatMessagesForAI } from "./plugins/ai";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
@@ -51,27 +49,19 @@ const allowedUsers = new NodeCache({
 const MAX_CHARS = 150;
 
 export const isAdmin = (walletId: string) => {
-  if (admins.includes(walletId)) {
-    return true;
-  } else {
-    return false;
-  }
+  return hasRole(walletId, "ADMIN");
 };
 
 export const isMod = (walletId: string) => {
-  if (mods.includes(walletId)) {
-    return true;
-  } else {
-    return false;
-  }
+  return hasRole(walletId, "MOD");
 };
 
 export const isHelpfulDegen = (walletId: string) => {
-  if (helpfulDegens.includes(walletId)) {
-    return true;
-  } else {
-    return false;
-  }
+  return hasRole(walletId, "HELPFUL_DEGEN");
+};
+
+export const canModerateChat = (walletId: string) => {
+  return isAdmin(walletId) || isMod(walletId);
 };
 
 export const isBanned = (wallet: string): boolean => {

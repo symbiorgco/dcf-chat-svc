@@ -8,11 +8,9 @@ import { ChatProfile } from "./utils/types";
 import { DateTime } from "luxon";
 import {
   addWalletToChat,
-  isAdmin,
   isAllowedToChat,
-  isHelpfulDegen,
-  isMod,
 } from "./chat";
+import { getExplicitRole } from "./roles";
 import { fetchTotalVolume, getLeaderboardEntry } from "./userProfiles";
 
 const DEALER_API = process.env.DEALER_API as string;
@@ -141,32 +139,30 @@ const updateAuthCache = async (authToken: string, chatProfile: ChatProfile) => {
 };
 
 export const getRole = (wallet: string) => {
-  if (isAdmin(wallet)) {
-    return "ADMIN";
-  } else if (isMod(wallet)) {
-    return "MOD";
-  } else if (isHelpfulDegen(wallet)) {
-    return "HELPFUL_DEGEN";
-  } else {
-    const leaderboardEntry = getLeaderboardEntry(wallet);
+  const explicitRole = getExplicitRole(wallet);
+  if (explicitRole) {
+    return explicitRole;
+  }
 
-    if (leaderboardEntry) {
-      if (leaderboardEntry.totalBetAmount > 10000) {
-        return "TIER6";
-      } else if (leaderboardEntry.totalBetAmount > 5000) {
-        return "TIER5";
-      } else if (leaderboardEntry.totalBetAmount > 2500) {
-        return "TIER4";
-      } else if (leaderboardEntry.totalBetAmount > 1000) {
-        return "TIER3";
-      } else if (leaderboardEntry.totalBetAmount > 500) {
-        return "TIER2";
-      } else if (leaderboardEntry.totalBetAmount > 100) {
-        return "TIER1";
-      } else {
-        return "MEMBER";
-      }
+  const leaderboardEntry = getLeaderboardEntry(wallet);
+
+  if (leaderboardEntry) {
+    if (leaderboardEntry.totalBetAmount > 10000) {
+      return "TIER6";
+    } else if (leaderboardEntry.totalBetAmount > 5000) {
+      return "TIER5";
+    } else if (leaderboardEntry.totalBetAmount > 2500) {
+      return "TIER4";
+    } else if (leaderboardEntry.totalBetAmount > 1000) {
+      return "TIER3";
+    } else if (leaderboardEntry.totalBetAmount > 500) {
+      return "TIER2";
+    } else if (leaderboardEntry.totalBetAmount > 100) {
+      return "TIER1";
+    } else {
+      return "MEMBER";
     }
   }
+
   return "MEMBER";
 };
