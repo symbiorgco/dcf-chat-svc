@@ -37,6 +37,12 @@ import NodeCache from "node-cache";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 import { getLeaderboardEntry } from "./userProfiles";
 import axios from "axios";
+import {
+  getConnectedPlayerPrivateMode,
+  setConnectedPlayer,
+  deleteConnectedPlayer,
+  getAllConnectedPlayers,
+} from "./connectedPlayers";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
@@ -79,18 +85,9 @@ export const wssViewers = new WebSocketServer({
 });
 
 export let viewers = 0;
-const playerList = new Map<number, ChatProfile>();
 export let playerProfiles = [];
 
-// Returns the privateMode for a connected player by walletId (undefined if not connected)
-export const getConnectedPlayerPrivateMode = (walletId: string): boolean | undefined => {
-  for (const profile of playerList.values()) {
-    if (profile.walletId === walletId) {
-      return profile.privateMode;
-    }
-  }
-  return undefined;
-};
+export { getConnectedPlayerPrivateMode } from "./connectedPlayers";
 
 wssAuthenticated.on("error", (err) => {
   logger.error("[WSS Authenticated] Server error");
@@ -629,7 +626,7 @@ wssAuthenticated.on(
       logger.info(
         `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
       );
-      playerList.set(playerId, chatProfile);
+      setConnectedPlayer(playerId, chatProfile);
       const chatProfileMSG: ChatDataMessage = {
         type: "PROFILE",
         message: chatProfile.role,
@@ -652,13 +649,13 @@ wssAuthenticated.on(
         logger.info(
           `[WS] Player disconnected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
         );
-        playerList.delete(playerId);
+        deleteConnectedPlayer(playerId);
       });
       ws.on("error", function error(err) {
         logger.error(
           `[WS] Player error ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
         );
-        playerList.delete(playerId);
+        deleteConnectedPlayer(playerId);
       });
       ws.on("message", function message(data) {
         try {
@@ -742,7 +739,7 @@ wssAuthenticated.on(
         }
       });
     } catch (err) {
-      playerList.delete(playerId);
+      deleteConnectedPlayer(playerId);
       logger.error(err as Error);
     }
   },
@@ -751,7 +748,7 @@ wssAuthenticated.on(
 const updateViewers = () => {
   viewers = wssAuthenticated.clients.size + wssViewers.clients.size + 8; // +8 for bots
   try {
-    const players = Array.from(playerList.values());
+    const players = getAllConnectedPlayers();
     const filteredArr = players.reduce((acc, current) => {
       const x = acc.find((item) => item.walletId === current.walletId);
       if (!x) {

@@ -10,7 +10,9 @@
     "test:public-profile": "node --test dist/tests/publicChatProfile.test.js",
     "test:public-profile:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/publicChatProfile.test.ts",
     "test:announcements": "node --test dist/tests/announcements.test.js",
-    "test:announcements:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/announcements.test.ts"
+    "test:announcements:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/announcements.test.ts",
+    "test:connected-players": "node --test dist/tests/connectedPlayers.test.js",
+    "test:connected-players:source": "node --import ./tests/ts-extension-resolver.mjs --test tests/connectedPlayers.test.ts"
   },
   "author": "",
   "license": "ISC",

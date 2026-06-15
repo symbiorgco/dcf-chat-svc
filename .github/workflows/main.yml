@@ -31,6 +31,8 @@ jobs:
         run: yarn test:public-profile
       - name: Run announcement tests
         run: yarn test:announcements
+      - name: Run connected-player boundary tests
+        run: yarn test:connected-players
 
   Build:
     # The type of runner that the job will run on
