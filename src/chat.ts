@@ -32,9 +32,16 @@ filter.addWords(...badWords.words);
 
 const BANNED_USER_FILE = "./banned.json";
 
-export let bannedUsers = JSON.parse(
-  fs.readFileSync(BANNED_USER_FILE, "utf-8"),
-) as string[];
+export let bannedUsers: string[] = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(BANNED_USER_FILE, "utf-8")) as string[];
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw err;
+  }
+})();
 
 const timedOutCache = new NodeCache({
   stdTTL: 1800,
