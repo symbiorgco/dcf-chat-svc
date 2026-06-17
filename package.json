@@ -6,7 +6,8 @@
     "start": "npx ts-node src/app.ts",
     "build": "npx tsc",
     "dev": "npx ts-node src/app.ts",
-    "verify:roles": "npm run build && node scripts/verify_roles.js",
+    "verify:roles": "rm -rf dist && npm run build && node scripts/verify_roles.js",
+    "verify:auth-gates": "rm -rf dist && npm run build && PORT_WS_VIEW=0 PORT_WS_AUTH=0 SOLANA_RPC=https://api.mainnet-beta.solana.com node scripts/verify_auth_gates.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

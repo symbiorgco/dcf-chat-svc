@@ -1,3 +1,21 @@
+// PERSISTENCE MODEL — EPHEMERAL RUNTIME STORE (single-instance only)
+//
+// roles.json is a cwd-relative file that does NOT survive container restarts or
+// redeployments. On start, the in-memory store seeds from the static JSON
+// defaults (admins.json / mods.json / helpful_degens.json); any role changes
+// made at runtime via the /roles API are written to roles.json but are LOST on
+// the next deploy (the container image does not include runtime-mutated state).
+//
+// Deployment contract:
+//   - Source of truth: admins.json / mods.json / helpful_degens.json in the
+//     repository. Permanent role grants or revocations must be committed there.
+//   - Runtime mutations (/roles/add, /roles/remove) are intentionally ephemeral:
+//     they apply until the next deploy. Operators relying on these across deploys
+//     must update the static JSON files instead.
+//   - This service runs as a single replica (confirmed: ECS task desiredCount=1,
+//     Dockerfile uses pm2-runtime with a single process). The per-process in-
+//     memory store is therefore consistent across all request handlers.
+//     Multi-replica deployments would require migrating to a shared store.
 import fs from "fs";
 import admins from "./admins.json";
 import mods from "./mods.json";

@@ -31,6 +31,11 @@ jobs:
       - name: Verify role store behaviour
         run: npm run verify:roles
 
+      - name: Verify admin auth gates on /roles/* routes
+        run: |
+          PORT_WS_VIEW=0 PORT_WS_AUTH=0 SOLANA_RPC=https://api.mainnet-beta.solana.com \
+            node scripts/verify_auth_gates.js
+
   Build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
