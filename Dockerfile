@@ -11,5 +11,6 @@ COPY . .
 RUN yarn global add pm2
 
 RUN yarn build
+RUN yarn test:announcements
 
 CMD ["pm2-runtime", "dist/app.js"]

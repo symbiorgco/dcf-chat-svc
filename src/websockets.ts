@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { WebSocketServer, WebSocket } from "ws";
 import { askAI } from "./plugins/ai";
+import { getPublicRfpWinnerNames } from "./announcements";
 import { fetchPersonasProfile } from "./plugins/personas";
 import { grantRFP, pickPlayersForRFP } from "./plugins/rfp";
 import { toPublicChatProfile } from "./publicChatProfile";
@@ -35,6 +36,12 @@ import NodeCache from "node-cache";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 import { getLeaderboardEntry } from "./userProfiles";
 import axios from "axios";
+import {
+  getConnectedPlayerPrivateMode,
+  setConnectedPlayer,
+  deleteConnectedPlayer,
+  getAllConnectedPlayers,
+} from "./connectedPlayers";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
@@ -77,8 +84,9 @@ export const wssViewers = new WebSocketServer({
 });
 
 export let viewers = 0;
-const playerList = new Map<number, ChatProfile>();
 export let playerProfiles = [];
+
+export { getConnectedPlayerPrivateMode } from "./connectedPlayers";
 
 wssAuthenticated.on("error", (err) => {
   logger.error("[WSS Authenticated] Server error");
@@ -232,16 +240,16 @@ export interface Player {
 
 const handleSendRFP = async (channel: number, ws: any = undefined) => {
   try {
-    const playerList = await pickPlayersForRFP();
+    const rfpWallets = await pickPlayersForRFP();
 
     const amountOfPlayers = Math.floor(Math.random() * 3) + 1;
 
     let shuffled = [
       ...new Set(
-        playerList
-          .map((value) => ({ value, sort: Math.random() }))
+        rfpWallets
+          .map((walletId) => ({ walletId, sort: Math.random() }))
           .sort((a, b) => a.sort - b.sort)
-          .map(({ value }) => value)
+          .map(({ walletId }) => walletId)
           .slice(0, amountOfPlayers),
       ),
     ];
@@ -251,17 +259,23 @@ const handleSendRFP = async (channel: number, ws: any = undefined) => {
         sendSystemMessage(`Sending 0.01 SOL rfp to ${shuffled}`, ws, true);
       }
 
-      // Get player names
-      const playerNames = (
-        await Promise.all(
-          shuffled.map((walletId) => fetchPersonasProfile(walletId)),
-        )
-      ).map((profile) => {
-        if (profile) {
-          return profile.nickname;
-        }
-        return "UNKNOWN";
-      });
+      // Get player names — populate privateMode from connected-player cache so
+      // private-mode users are masked in the public announcement. Fail-closed
+      // (?? true): if the winner is not connected, we cannot confirm their
+      // preference, so we mask them rather than leak a real nickname.
+      const winnerProfiles = await Promise.all(
+        shuffled.map(async (walletId) => {
+          const persona = await fetchPersonasProfile(walletId);
+          if (!persona) return undefined;
+          return { ...persona, privateMode: getConnectedPlayerPrivateMode(walletId) ?? true };
+        }),
+      );
+      const playerNames = getPublicRfpWinnerNames(
+        shuffled.map((walletId, index) => ({
+          walletId,
+          profile: winnerProfiles[index],
+        })),
+      );
 
       const maxLength = 200;
       const replyAI = await askAI(
@@ -611,7 +625,7 @@ wssAuthenticated.on(
       logger.info(
         `[WS] Player connected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
       );
-      playerList.set(playerId, chatProfile);
+      setConnectedPlayer(playerId, chatProfile);
       const chatProfileMSG: ChatDataMessage = {
         type: "PROFILE",
         message: chatProfile.role,
@@ -634,13 +648,13 @@ wssAuthenticated.on(
         logger.info(
           `[WS] Player disconnected ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
         );
-        playerList.delete(playerId);
+        deleteConnectedPlayer(playerId);
       });
       ws.on("error", function error(err) {
         logger.error(
           `[WS] Player error ${chatProfile.walletId} ${chatProfile.nickname} ${playerId}`,
         );
-        playerList.delete(playerId);
+        deleteConnectedPlayer(playerId);
       });
       ws.on("message", function message(data) {
         try {
@@ -724,7 +738,7 @@ wssAuthenticated.on(
         }
       });
     } catch (err) {
-      playerList.delete(playerId);
+      deleteConnectedPlayer(playerId);
       logger.error(err as Error);
     }
   },
@@ -733,7 +747,7 @@ wssAuthenticated.on(
 const updateViewers = () => {
   viewers = wssAuthenticated.clients.size + wssViewers.clients.size + 8; // +8 for bots
   try {
-    const players = Array.from(playerList.values());
+    const players = getAllConnectedPlayers();
     const filteredArr = players.reduce((acc, current) => {
       const x = acc.find((item) => item.walletId === current.walletId);
       if (!x) {
