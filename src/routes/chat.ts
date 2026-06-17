@@ -1,7 +1,15 @@
 import "dotenv/config";
 import express from "express";
-import { playerProfiles, sendAnnouncement, viewers, getConnectedPlayerPrivateMode } from "../websockets";
-import { buildPublicTipAnnouncement } from "../announcements";
+import {
+  getConnectedPlayerPrivateMode,
+  playerProfiles,
+  sendAnnouncement,
+  viewers,
+} from "../websockets";
+import {
+  buildPublicTipAnnouncement,
+  buildPublicTipRecipientProfile,
+} from "../announcements";
 import {
   bannedUsers,
   getChatMessageAuthorWallet,
@@ -207,20 +215,18 @@ router.post("/request_tip_announcement", async (req, res) => {
       if (txResult) {
         const player = await fetchPersonasProfile(txResult.pubkey);
         if (!player) {
-          console.log("Tip recipient profile could not be fetched");
-          res.json({ error: true });
-          return;
+          console.log(
+            "Tip recipient profile could not be fetched; masking recipient",
+          );
         }
+        const recipientProfile = buildPublicTipRecipientProfile(
+          txResult.pubkey,
+          player,
+          getConnectedPlayerPrivateMode(txResult.pubkey),
+        );
         const tipAnnouncement = buildPublicTipAnnouncement(
           chatProfile,
-          {
-            ...player,
-            walletId: txResult.pubkey,
-            // Populate privateMode from connected-player cache; personas API does not carry this field.
-            // Fail-closed (?? true): if recipient is not connected we cannot confirm their preference,
-            // so we mask them rather than leak a real nickname in the public tip announcement.
-            privateMode: getConnectedPlayerPrivateMode(txResult.pubkey) ?? true,
-          },
+          recipientProfile,
           txResult.sol
         );
         sendAnnouncement(

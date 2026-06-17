@@ -24,6 +24,26 @@ export type RfpWinnerInput = {
   profile?: PublicPersonaProfileInput;
 };
 
+export const buildPublicTipRecipientProfile = (
+  walletId: string,
+  profile: PublicPersonaProfileInput | undefined,
+  privateMode: boolean | undefined,
+): PublicChatProfileInput => {
+  if (!profile) {
+    return {
+      nickname: "Unknown Recipient",
+      walletId,
+      privateMode: true,
+    };
+  }
+
+  return {
+    ...profile,
+    walletId,
+    privateMode: privateMode ?? true,
+  };
+};
+
 export const buildPublicTipAnnouncement = (
   sender: PublicChatProfileInput,
   recipient: PublicChatProfileInput,

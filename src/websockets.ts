@@ -29,7 +29,6 @@ import {
   recentChatMessages,
   removeChatMessage,
   timeoutUser,
-  toPublicChatProfile,
   unbanUser,
   verifyMessage,
 } from "./chat";

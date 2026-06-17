@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPublicTipAnnouncement,
+  buildPublicTipRecipientProfile,
   getPublicRfpWinnerNames,
 } from "../src/announcements";
 
@@ -185,6 +186,26 @@ test("tip recipient masked when offline — fail-closed privateMode (undefined ?
     "offline user nickname must not appear in tip announcement",
   );
   assert.equal(projection.metadata.to, "Anonymous Degen");
+});
+
+test("tip recipient masked when personas profile is unavailable after settlement", () => {
+  const recipientProfile = buildPublicTipRecipientProfile(
+    "missing-profile-wallet",
+    undefined,
+    undefined,
+  );
+  const projection = buildPublicTipAnnouncement(
+    publicSender,
+    recipientProfile,
+    0.5,
+  );
+
+  assert.equal(
+    projection.message,
+    "Public Sender tipped 0.500 SOL to Anonymous Degen!",
+  );
+  assert.equal(projection.metadata.to, "Anonymous Degen");
+  assert.equal(projection.message.includes("Unknown Recipient"), false);
 });
 
 test("RFP winner masked when offline — fail-closed privateMode (undefined ?? true → masked)", () => {
