@@ -139,6 +139,7 @@ const updateAuthCache = async (authToken: string, chatProfile: ChatProfile) => {
 };
 
 export const getRole = (wallet: string) => {
+  if (!wallet || typeof wallet !== "string") return "MEMBER";
   const explicitRole = getExplicitRole(wallet);
   if (explicitRole) {
     return explicitRole;
