@@ -6,3 +6,5 @@ config/default.json
 *.0
 dist
 app.log
+roles.json
+roles.json.*.tmp
