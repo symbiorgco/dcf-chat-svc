@@ -4,9 +4,11 @@ import badWords from "./bad-words.json";
 import { logger } from "./logger";
 import fs from "fs";
 import NodeCache from "node-cache";
-import { hasRole } from "./roles";
 
 const MAX_MESSAGES_HISTORY = 75;
+import admins from "./admins.json";
+import mods from "./mods.json";
+import helpfulDegens from "./helpful_degens.json";
 import { recentChatMessagesForAI } from "./plugins/ai";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
@@ -32,16 +34,9 @@ filter.addWords(...badWords.words);
 
 const BANNED_USER_FILE = "./banned.json";
 
-export let bannedUsers: string[] = (() => {
-  try {
-    return JSON.parse(fs.readFileSync(BANNED_USER_FILE, "utf-8")) as string[];
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-    throw err;
-  }
-})();
+export let bannedUsers = JSON.parse(
+  fs.readFileSync(BANNED_USER_FILE, "utf-8"),
+) as string[];
 
 const timedOutCache = new NodeCache({
   stdTTL: 1800,
@@ -56,19 +51,27 @@ const allowedUsers = new NodeCache({
 const MAX_CHARS = 150;
 
 export const isAdmin = (walletId: string) => {
-  return hasRole(walletId, "ADMIN");
+  if (admins.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 export const isMod = (walletId: string) => {
-  return hasRole(walletId, "MOD");
+  if (mods.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 export const isHelpfulDegen = (walletId: string) => {
-  return hasRole(walletId, "HELPFUL_DEGEN");
-};
-
-export const canModerateChat = (walletId: string) => {
-  return isAdmin(walletId) || isMod(walletId);
+  if (helpfulDegens.includes(walletId)) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 export const isBanned = (wallet: string): boolean => {
