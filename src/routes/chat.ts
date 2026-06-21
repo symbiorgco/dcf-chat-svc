@@ -3,19 +3,13 @@ import express from "express";
 import { playerProfiles, sendAnnouncement, viewers } from "../websockets";
 import {
   bannedUsers,
-  canModerateChat,
   isAdmin,
   isAllowedToChat,
+  isHelpfulDegen,
+  isMod,
   recentChatMessages,
 } from "../chat";
 import { verifyJwt } from "../authentication";
-import {
-  addRole,
-  getRoles,
-  reloadRoles,
-  removeRole,
-  RoleStoreError,
-} from "../roles";
 import { logChatReport } from "../utils/modLogging";
 import NodeCache from "node-cache";
 import { verifyTransaction } from "../plugins/solana";
@@ -35,51 +29,6 @@ const txCheckintervalCache = new NodeCache({
 const parsedTXs: string[] = [];
 
 export const router = express.Router();
-
-const roleStoreErrorResponse = (res: express.Response, err: unknown) => {
-  if (err instanceof RoleStoreError) {
-    return res.status(err.statusCode).json({
-      error: true,
-      code: err.code,
-      message: err.message,
-    });
-  }
-
-  console.log(err);
-  return res.status(500).json({
-    error: true,
-    code: "ROLE_STORE_ERROR",
-    message: "Unable to update roles",
-  });
-};
-
-const verifyAdminRequest = async (
-  req: express.Request,
-  res: express.Response,
-) => {
-  const authKey = req.headers.authorization;
-  const chatProfile = await verifyJwt(authKey);
-
-  if (!chatProfile) {
-    res.status(401).json({
-      error: true,
-      code: "UNAUTHENTICATED",
-      message: "Authentication required",
-    });
-    return undefined;
-  }
-
-  if (!isAdmin(chatProfile.walletId)) {
-    res.status(403).json({
-      error: true,
-      code: "ADMIN_REQUIRED",
-      message: "Admin role required",
-    });
-    return undefined;
-  }
-
-  return chatProfile;
-};
 
 router.get("/viewers", async (req, res) => {
   try {
@@ -117,59 +66,18 @@ router.get("/get_banned_wallets", async (req, res) => {
 
     const chatProfile = await verifyJwt(authKey);
 
-    if (chatProfile && canModerateChat(chatProfile.walletId)) {
+    if (
+      chatProfile &&
+      (isAdmin(chatProfile.walletId) ||
+        isMod(chatProfile.walletId) ||
+        isHelpfulDegen(chatProfile.walletId))
+    ) {
       res.json({ completed: true, wallets: bannedUsers });
     } else {
       res.json({ error: true });
     }
   } catch (err) {
     res.json({ error: true });
-  }
-});
-
-router.get("/roles", async (req, res) => {
-  try {
-    const chatProfile = await verifyAdminRequest(req, res);
-    if (!chatProfile) return;
-
-    res.json({ completed: true, roles: getRoles() });
-  } catch (err) {
-    roleStoreErrorResponse(res, err);
-  }
-});
-
-router.post("/roles/add", async (req, res) => {
-  try {
-    const chatProfile = await verifyAdminRequest(req, res);
-    if (!chatProfile) return;
-
-    const roles = addRole(req.body?.wallet, req.body?.role);
-    res.json({ completed: true, roles });
-  } catch (err) {
-    roleStoreErrorResponse(res, err);
-  }
-});
-
-router.post("/roles/remove", async (req, res) => {
-  try {
-    const chatProfile = await verifyAdminRequest(req, res);
-    if (!chatProfile) return;
-
-    const roles = removeRole(req.body?.wallet, req.body?.role);
-    res.json({ completed: true, roles });
-  } catch (err) {
-    roleStoreErrorResponse(res, err);
-  }
-});
-
-router.post("/roles/reload", async (req, res) => {
-  try {
-    const chatProfile = await verifyAdminRequest(req, res);
-    if (!chatProfile) return;
-
-    res.json({ completed: true, roles: reloadRoles() });
-  } catch (err) {
-    roleStoreErrorResponse(res, err);
   }
 });
 

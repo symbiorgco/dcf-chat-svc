@@ -13,29 +13,35 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  Test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  # Test:
+  #   # The type of runner that the job will run on
+  #   runs-on: ubuntu-latest
 
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Install Dependencies
-        run: npm ci
+  #     - name: Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version-file: .nvmrc
 
-      - name: Verify role store behaviour
-        run: npm run verify:roles
+  #     - name: Cache dependencies
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: ~/.npm
+  #         key: npm-${{ hashFiles('package-lock.json') }}
+  #         restore-keys: npm-
 
-      - name: Verify admin auth gates on /roles/* routes
-        run: |
-          PORT_WS_VIEW=0 PORT_WS_AUTH=0 SOLANA_RPC=https://api.mainnet-beta.solana.com \
-            node scripts/verify_auth_gates.js
+  #     - name: Install Dependencies
+  #       run: |
+  #         yarn install --frozen-lockfile
 
+  #     - name: Run Test
+  #       run: |
+  #         yarn test:ci
   Build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
