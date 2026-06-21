@@ -51,11 +51,17 @@ try {
   const staticAdmins = require("../dist/src/admins.json");
   const staticMods = require("../dist/src/mods.json");
   const staticHelpfulDegens = require("../dist/src/helpful_degens.json");
+  const revokedHelpfulDegenWallet =
+    "4jiW4qvmJqqf8P97ZSPQXCawx3oTfrsyd5gG32HuKsB7";
 
   const seededRoles = roles.getRoles();
   assert.deepStrictEqual(seededRoles.ADMIN, staticAdmins);
   assert.deepStrictEqual(seededRoles.MOD, staticMods);
   assert.deepStrictEqual(seededRoles.HELPFUL_DEGEN, staticHelpfulDegens);
+  assert.strictEqual(
+    seededRoles.HELPFUL_DEGEN.includes(revokedHelpfulDegenWallet),
+    false,
+  );
   assert.ok(fs.existsSync(roleStateFile));
 
   const adminWallet = "VerifyAdmin111111111111111111111111111111111111";
