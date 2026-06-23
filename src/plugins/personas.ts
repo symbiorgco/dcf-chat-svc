@@ -1,9 +1,10 @@
 import axios from "axios";
 
-type Profile = {
+export type Profile = {
   nickname: string;
   aboutMe: string;
   profileImageUrl: string;
+  privateMode?: boolean;
 };
 
 export const fetchPersonasProfile = async (

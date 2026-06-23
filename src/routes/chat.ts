@@ -3,6 +3,7 @@ import express from "express";
 import { playerProfiles, sendAnnouncement, viewers } from "../websockets";
 import {
   bannedUsers,
+  getChatMessageAuthorWallet,
   isAdmin,
   isAllowedToChat,
   isHelpfulDegen,
@@ -104,10 +105,14 @@ router.post("/report", async (req, res) => {
           .get(channel)
           .find((msg) => msg.id === req.body.id);
         if (message) {
+          const reportedWallet =
+            getChatMessageAuthorWallet(message.id, channel) ||
+            message.wallet ||
+            "UNKNOWN";
           await logChatReport(
             chatProfile.walletId,
             chatProfile.nickname,
-            message.wallet,
+            reportedWallet,
             message.username,
             message.message,
             channel
