@@ -15,6 +15,7 @@ import NodeCache from "node-cache";
 import { verifyTransaction } from "../plugins/solana";
 import { fetchPersonasProfile } from "../plugins/personas";
 import { ChatMetaData } from "../utils/types";
+import { isSendAnnouncementAuthorized } from "./chatGuards";
 
 const reportIntervalCache = new NodeCache({
   stdTTL: 10, // 1 message per second
@@ -129,20 +130,10 @@ router.post("/report", async (req, res) => {
 
 router.post("/send_announcement", async (req, res) => {
   try {
-    let authenticated = false;
-
-    const authKey = req.headers.authorization;
-
-    if (!authKey || authKey.length === 0) {
-      if (req.headers["internal-key"] === process.env.INTERNAL_KEY) {
-        authenticated = true;
-      }
-    } else {
-      const chatProfile = await verifyJwt(authKey);
-      if (chatProfile && isAdmin(chatProfile.walletId)) {
-        authenticated = true;
-      }
-    }
+    const authenticated = await isSendAnnouncementAuthorized({
+      authKey: req.headers.authorization,
+      internalKey: req.headers["internal-key"],
+    });
 
     if (authenticated) {
       const type = req.body.type as string;
