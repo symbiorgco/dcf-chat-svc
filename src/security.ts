@@ -29,7 +29,7 @@ type RateLimitBucket = {
   updatedAt: number;
 };
 
-const viewersRateLimitBuckets = new Map<string, RateLimitBucket>();
+const routeRateLimitBuckets = new Map<string, RateLimitBucket>();
 let lastRateLimitCleanupAt = 0;
 
 const parseList = (value: string | undefined, defaults: string[]) => {
@@ -214,9 +214,9 @@ const cleanupRateLimitBuckets = (now: number) => {
   }
 
   lastRateLimitCleanupAt = now;
-  viewersRateLimitBuckets.forEach((bucket, key) => {
+  routeRateLimitBuckets.forEach((bucket, key) => {
     if (now - bucket.updatedAt > RATE_LIMIT_BUCKET_MAX_IDLE_MS) {
-      viewersRateLimitBuckets.delete(key);
+      routeRateLimitBuckets.delete(key);
     }
   });
 };
@@ -226,13 +226,17 @@ const numberFromEnv = (name: string, defaultValue: number) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
 };
 
-const clientKeyForRequest = (req: Request, evaluation: EdgeEvaluation) => {
+const clientKeyForRequest = (
+  req: Request,
+  evaluation: EdgeEvaluation,
+  bucketName: string,
+) => {
   const ip = getObservedClientIp(
     req.headers,
     req.ip || req.socket.remoteAddress,
     evaluation.edgeAuthenticated,
   );
-  return `${evaluation.host || "unknown-host"}:${ip}`;
+  return `${bucketName}:${evaluation.host || "unknown-host"}:${ip}`;
 };
 
 export const httpRequestObservability = (
@@ -305,19 +309,31 @@ export const enforceHttpEdgeProtection = (
   next();
 };
 
-export const viewersRateLimit = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const ratePerSecond = numberFromEnv("CHAT_VIEWERS_RATE_PER_SECOND", 2);
-  const burst = numberFromEnv("CHAT_VIEWERS_RATE_BURST", 20);
+const routeRateLimit = ({
+  bucketName,
+  rateEnv,
+  burstEnv,
+  defaultRatePerSecond,
+  defaultBurst,
+  event,
+  message,
+}: {
+  bucketName: string;
+  rateEnv: string;
+  burstEnv: string;
+  defaultRatePerSecond: number;
+  defaultBurst: number;
+  event: string;
+  message: string;
+}) => (req: Request, res: Response, next: NextFunction) => {
+  const ratePerSecond = numberFromEnv(rateEnv, defaultRatePerSecond);
+  const burst = numberFromEnv(burstEnv, defaultBurst);
   const now = Date.now();
   const evaluation =
     (res.locals.edgeEvaluation as EdgeEvaluation | undefined) ||
     evaluateEdgeRequest(req.headers);
-  const key = clientKeyForRequest(req, evaluation);
-  const bucket = viewersRateLimitBuckets.get(key) || {
+  const key = clientKeyForRequest(req, evaluation, bucketName);
+  const bucket = routeRateLimitBuckets.get(key) || {
     tokens: burst,
     updatedAt: now,
   };
@@ -332,12 +348,12 @@ export const viewersRateLimit = (
 
   if (bucket.tokens >= 1) {
     bucket.tokens -= 1;
-    viewersRateLimitBuckets.set(key, bucket);
+    routeRateLimitBuckets.set(key, bucket);
     next();
     return;
   }
 
-  viewersRateLimitBuckets.set(key, bucket);
+  routeRateLimitBuckets.set(key, bucket);
   const retryAfterSeconds = Math.max(
     1,
     Math.ceil((1 - bucket.tokens) / ratePerSecond),
@@ -346,7 +362,7 @@ export const viewersRateLimit = (
   res.setHeader("Retry-After", String(retryAfterSeconds));
   logger.warn(
     {
-      event: "chat_viewers_rate_limited",
+      event,
       requestId: getRequestId(req.headers),
       method: req.method,
       path: req.path,
@@ -362,10 +378,30 @@ export const viewersRateLimit = (
       burst,
       retryAfterSeconds,
     },
-    "chat viewers rate limited",
+    message,
   );
   res.status(429).json({ error: true, message: "Rate limit exceeded" });
 };
+
+export const viewersRateLimit = routeRateLimit({
+  bucketName: "viewers",
+  rateEnv: "CHAT_VIEWERS_RATE_PER_SECOND",
+  burstEnv: "CHAT_VIEWERS_RATE_BURST",
+  defaultRatePerSecond: 2,
+  defaultBurst: 20,
+  event: "chat_viewers_rate_limited",
+  message: "chat viewers rate limited",
+});
+
+export const historyAllRateLimit = routeRateLimit({
+  bucketName: "history-all",
+  rateEnv: "CHAT_HISTORY_ALL_RATE_PER_SECOND",
+  burstEnv: "CHAT_HISTORY_ALL_RATE_BURST",
+  defaultRatePerSecond: 1,
+  defaultBurst: 10,
+  event: "chat_history_all_rate_limited",
+  message: "chat history all rate limited",
+});
 
 export const rejectUntrustedWebSocketUpgrade = (
   request: IncomingMessage,
@@ -442,6 +478,8 @@ export const configureHttpSecurity = (app: Express) => {
       trustProxy,
       viewersRatePerSecond: numberFromEnv("CHAT_VIEWERS_RATE_PER_SECOND", 2),
       viewersRateBurst: numberFromEnv("CHAT_VIEWERS_RATE_BURST", 20),
+      historyAllRatePerSecond: numberFromEnv("CHAT_HISTORY_ALL_RATE_PER_SECOND", 1),
+      historyAllRateBurst: numberFromEnv("CHAT_HISTORY_ALL_RATE_BURST", 10),
     },
     "chat security configured",
   );
@@ -449,4 +487,5 @@ export const configureHttpSecurity = (app: Express) => {
   app.use(httpRequestObservability);
   app.use(enforceHttpEdgeProtection);
   app.use("/api/chat/viewers", viewersRateLimit);
+  app.use("/api/chat/get_history_all", historyAllRateLimit);
 };

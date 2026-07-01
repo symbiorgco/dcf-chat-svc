@@ -39,6 +39,8 @@ TRUSTED_EDGE_SECRET=<same value rendered into DCF_CHAT_EDGE_SECRET for nginx>
 PUBLIC_CHAT_HOSTS=chat-api.degencoinflip.com,chat.degenrpc.com,chatview-api.degencoinflip.com
 CHAT_VIEWERS_RATE_PER_SECOND=2
 CHAT_VIEWERS_RATE_BURST=20
+CHAT_HISTORY_ALL_RATE_PER_SECOND=1
+CHAT_HISTORY_ALL_RATE_BURST=10
 TRUST_PROXY=loopback
 ```
 
@@ -58,7 +60,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-`/api/chat/viewers` is limited twice: at NGINX with `chat_api_viewers` (`2r/s`, `burst=20`) and in the Node route middleware with `CHAT_VIEWERS_RATE_PER_SECOND` / `CHAT_VIEWERS_RATE_BURST`. The app logs one sanitized request event per HTTP request plus explicit edge-deny and viewer-rate-limit events. The request logs intentionally do not include `Authorization`, `internal-key`, `sec-websocket-protocol`, cookies, request bodies, or query strings.
+`/api/chat/viewers` is limited twice: at NGINX with `chat_api_viewers` (`2r/s`, `burst=20`) and in the Node route middleware with `CHAT_VIEWERS_RATE_PER_SECOND` / `CHAT_VIEWERS_RATE_BURST`. `/api/chat/get_history_all` gets the same two-layer treatment with `chat_api_history_all` (`1r/s`, `burst=10`) and `CHAT_HISTORY_ALL_RATE_PER_SECOND` / `CHAT_HISTORY_ALL_RATE_BURST`. The app logs one sanitized request event per HTTP request plus explicit edge-deny and route-rate-limit events. The request logs intentionally do not include `Authorization`, `internal-key`, `sec-websocket-protocol`, cookies, request bodies, or query strings.
 
 Smoke verification after DNS/WAF cutover:
 
@@ -66,9 +68,11 @@ Smoke verification after DNS/WAF cutover:
 dig +short chat-api.degencoinflip.com
 curl -I https://chat-api.degencoinflip.com/api/chat/viewers
 curl -I https://chat.degenrpc.com/api/chat/viewers
+curl -I https://chat-api.degencoinflip.com/api/chat/get_history_all
 
 curl -I --resolve chat-api.degencoinflip.com:443:<old-origin-ip> https://chat-api.degencoinflip.com/api/chat/viewers
 curl -I --resolve chat.degenrpc.com:443:<old-origin-ip> https://chat.degenrpc.com/api/chat/viewers
+curl -I --resolve chat-api.degencoinflip.com:443:<old-origin-ip> https://chat-api.degencoinflip.com/api/chat/get_history_all
 ```
 
 The direct-origin `--resolve` checks should return deny/timeout/403 instead of normal app data. Do not run a production load test; validate the path-specific limit with local or staging traffic only.

@@ -48,6 +48,7 @@ limit_req_status 429;
 limit_conn_status 429;
 limit_req_zone $chat_rate_key zone=chat_api_general:20m rate=10r/s;
 limit_req_zone $chat_rate_key zone=chat_api_viewers:10m rate=2r/s;
+limit_req_zone $chat_rate_key zone=chat_api_history_all:10m rate=1r/s;
 limit_req_zone $chat_rate_key zone=chat_ws:20m rate=5r/s;
 limit_conn_zone $chat_rate_key zone=chat_conn:10m;
 
@@ -100,6 +101,20 @@ server {
     location = /api/chat/viewers {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_viewers burst=20 nodelay;
+        proxy_pass http://chatapi;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
+        proxy_set_header X-Request-Id $request_id;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Ray $http_cf_ray;
+    }
+
+    location = /api/chat/get_history_all {
+        limit_conn chat_conn 10;
+        limit_req zone=chat_api_history_all burst=10 nodelay;
         proxy_pass http://chatapi;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -173,6 +188,20 @@ server {
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
+    location = /api/chat/get_history_all {
+        limit_conn chat_conn 10;
+        limit_req zone=chat_api_history_all burst=10 nodelay;
+        proxy_pass http://chatapi;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
+        proxy_set_header X-Request-Id $request_id;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Ray $http_cf_ray;
+    }
+
     location /api/chat {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_general burst=30 nodelay;
@@ -224,6 +253,20 @@ server {
     location = /api/chat/viewers {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_viewers burst=20 nodelay;
+        proxy_pass http://chatapi;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
+        proxy_set_header X-Request-Id $request_id;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Ray $http_cf_ray;
+    }
+
+    location = /api/chat/get_history_all {
+        limit_conn chat_conn 10;
+        limit_req zone=chat_api_history_all burst=10 nodelay;
         proxy_pass http://chatapi;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
