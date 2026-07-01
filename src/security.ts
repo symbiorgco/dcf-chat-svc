@@ -236,7 +236,7 @@ const clientKeyForRequest = (
     req.ip || req.socket.remoteAddress,
     evaluation.edgeAuthenticated,
   );
-  return `${bucketName}:${evaluation.host || "unknown-host"}:${ip}`;
+  return `${bucketName}:${ip}`;
 };
 
 export const httpRequestObservability = (
