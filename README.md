@@ -30,6 +30,8 @@ Repo-owned runtime surface:
 
 Production public traffic should enter through the WAF/edge first, then origin NGINX, then Node. Use `ops/nginx/dcf-chat-svc.conf.template` for the origin NGINX layer. It denies requests whose source address is not in `/etc/nginx/conf.d/dcf-chat-trusted-edge-geo.conf`, applies a dedicated `/api/chat/viewers` limit zone, preserves WebSocket upgrades, and injects `X-DCF-Edge-Secret` only after the trusted-edge source check passes.
 
+In `EDGE_PROTECTION_MODE=enforce`, Node rejects unauthenticated HTTP/WebSocket requests on these listeners regardless of the client-supplied `Host`. The NGINX limiter uses `CF-Connecting-IP` only when the trusted edge overwrites it; otherwise it falls back to the trusted edge hop instead of trusting client-supplied `X-Forwarded-For`.
+
 Required app environment for protected production:
 
 ```

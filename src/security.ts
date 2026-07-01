@@ -120,7 +120,7 @@ const evaluateEdgeRequest = (
   const host = getHost(headers.host);
   const protectedHost = isProtectedPublicHost(headers.host);
   const edgeAuthenticated = isTrustedEdgeRequest(headers);
-  const deny = protectedHost && mode === "enforce" && !edgeAuthenticated;
+  const deny = mode === "enforce" && !edgeAuthenticated;
 
   return {
     mode,
@@ -129,7 +129,7 @@ const evaluateEdgeRequest = (
     edgeAuthenticated,
     deny,
     reason:
-      protectedHost && !edgeAuthenticated
+      (deny || (protectedHost && !edgeAuthenticated))
         ? getTrustedEdgeSecret()
           ? "missing-or-invalid-edge-secret"
           : "trusted-edge-secret-not-configured"

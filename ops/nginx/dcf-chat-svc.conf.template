@@ -11,24 +11,16 @@
 #
 # Direct-origin requests from addresses not in that include return 403 before
 # they reach Node. The shared header is injected only after that edge check.
+# The edge must overwrite CF-Connecting-IP for per-client rate limits; otherwise
+# the limiter falls back to the trusted edge hop instead of trusting client XFF.
 
 map $http_upgrade $connection_upgrade {
     default upgrade;
     '' close;
 }
 
-map $http_x_forwarded_for $chat_xff_first {
-    "~^(?<first>[^,]+)" $first;
-    default "";
-}
-
-map $http_cf_connecting_ip $chat_edge_client_ip {
+map $http_cf_connecting_ip $chat_rate_key {
     default $http_cf_connecting_ip;
-    "" $chat_xff_first;
-}
-
-map $chat_edge_client_ip $chat_rate_key {
-    default $chat_edge_client_ip;
     "" $remote_addr;
 }
 
@@ -98,7 +90,7 @@ server {
         return 403;
     }
 
-    location = /api/chat/viewers {
+    location ~ ^/api/chat/viewers/?$ {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_viewers burst=20 nodelay;
         proxy_pass http://chatapi;
@@ -106,13 +98,13 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
-    location = /api/chat/get_history_all {
+    location ~ ^/api/chat/get_history_all/?$ {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_history_all burst=10 nodelay;
         proxy_pass http://chatapi;
@@ -120,9 +112,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -134,9 +126,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -152,9 +144,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -174,7 +166,7 @@ server {
         return 403;
     }
 
-    location = /api/chat/viewers {
+    location ~ ^/api/chat/viewers/?$ {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_viewers burst=20 nodelay;
         proxy_pass http://chatapi;
@@ -182,13 +174,13 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
-    location = /api/chat/get_history_all {
+    location ~ ^/api/chat/get_history_all/?$ {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_history_all burst=10 nodelay;
         proxy_pass http://chatapi;
@@ -196,9 +188,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -210,9 +202,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -228,9 +220,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -250,7 +242,7 @@ server {
         return 403;
     }
 
-    location = /api/chat/viewers {
+    location ~ ^/api/chat/viewers/?$ {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_viewers burst=20 nodelay;
         proxy_pass http://chatapi;
@@ -258,13 +250,13 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
-    location = /api/chat/get_history_all {
+    location ~ ^/api/chat/get_history_all/?$ {
         limit_conn chat_conn 10;
         limit_req zone=chat_api_history_all burst=10 nodelay;
         proxy_pass http://chatapi;
@@ -272,9 +264,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -286,9 +278,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
@@ -304,9 +296,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-DCF-Edge-Secret "${DCF_CHAT_EDGE_SECRET}";
         proxy_set_header X-Request-Id $request_id;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $chat_rate_key;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        proxy_set_header CF-Connecting-IP $chat_rate_key;
         proxy_set_header CF-Ray $http_cf_ray;
     }
 
