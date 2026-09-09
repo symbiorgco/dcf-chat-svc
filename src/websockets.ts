@@ -34,6 +34,10 @@ import NodeCache from "node-cache";
 import { logBan, logTimeout, logUnban } from "./utils/modLogging";
 import { getLeaderboardEntry } from "./userProfiles";
 import axios from "axios";
+import {
+  rejectUntrustedWebSocketUpgrade,
+  shouldAcceptWebSocketRequest,
+} from "./security";
 
 const server = http.createServer();
 export const wssAuthenticated = new WebSocketServer({
@@ -49,6 +53,12 @@ server.on("upgrade", async function upgrade(request, socket, head) {
   let chatProfile: ChatProfile = undefined;
 
   try {
+    if (
+      rejectUntrustedWebSocketUpgrade(request, socket, "ws-authenticated")
+    ) {
+      return;
+    }
+
     const headers = request.headers;
 
     chatProfile = await verifyJwt(headers["sec-websocket-protocol"] as string);
@@ -73,6 +83,13 @@ server.on("upgrade", async function upgrade(request, socket, head) {
 export const wssViewers = new WebSocketServer({
   port: Number.parseInt(process.env.PORT_WS_VIEW),
   maxPayload: 512,
+  verifyClient: (info, callback) => {
+    callback(
+      shouldAcceptWebSocketRequest(info.req, "ws-viewer"),
+      403,
+      "Forbidden",
+    );
+  },
 });
 
 export let viewers = 0;

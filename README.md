@@ -18,7 +18,70 @@ sudo systemctl enable --now certbot-renew.timer
 sudo systemctl enable --now nginx
 ```
 
-### NGINX config
+### Protected public chat edge
+
+Repo-owned runtime surface:
+
+- `PORT` / `8402`: Express HTTP API under `/api/chat`.
+- `PORT_WS_AUTH` / `8400`: authenticated chat WebSocket at `/`.
+- `PORT_WS_VIEW` / `8401`: anonymous viewer WebSocket at `/`.
+- Public hostnames: `chat-api.degencoinflip.com`, `chat.degenrpc.com`, and `chatview-api.degencoinflip.com`.
+- Public HTTP paths: `GET /api/chat/viewers`, `GET /api/chat/get_history`, `GET /api/chat/get_history_all`, `GET /api/chat/get_banned_wallets`, `POST /api/chat/report`, `POST /api/chat/send_announcement`, and `POST /api/chat/request_tip_announcement`.
+
+Production public traffic should enter through the WAF/edge first, then origin NGINX, then Node. Use `ops/nginx/dcf-chat-svc.conf.template` for the origin NGINX layer. It denies requests whose source address is not in `/etc/nginx/conf.d/dcf-chat-trusted-edge-geo.conf`, applies a dedicated `/api/chat/viewers` limit zone, preserves WebSocket upgrades, and injects `X-DCF-Edge-Secret` only after the trusted-edge source check passes.
+
+In `EDGE_PROTECTION_MODE=enforce`, Node rejects unauthenticated HTTP/WebSocket requests on these listeners regardless of the client-supplied `Host`. The NGINX limiter uses `CF-Connecting-IP` only when the trusted edge overwrites it; otherwise it falls back to the trusted edge hop instead of trusting client-supplied `X-Forwarded-For`.
+
+Required app environment for protected production:
+
+```
+EDGE_PROTECTION_MODE=enforce
+TRUSTED_EDGE_HEADER=x-dcf-edge-secret
+TRUSTED_EDGE_SECRET=<same value rendered into DCF_CHAT_EDGE_SECRET for nginx>
+PUBLIC_CHAT_HOSTS=chat-api.degencoinflip.com,chat.degenrpc.com,chatview-api.degencoinflip.com
+CHAT_VIEWERS_RATE_PER_SECOND=2
+CHAT_VIEWERS_RATE_BURST=20
+CHAT_HISTORY_ALL_RATE_PER_SECOND=1
+CHAT_HISTORY_ALL_RATE_BURST=10
+TRUST_PROXY=loopback
+```
+
+Render and validate the NGINX config:
+
+```
+sudo install -m 0644 /dev/null /etc/nginx/conf.d/dcf-chat-trusted-edge-geo.conf
+# Fill dcf-chat-trusted-edge-geo.conf with trusted WAF/edge CIDRs in nginx geo format:
+# 203.0.113.0/24 1;
+
+DCF_CHAT_EDGE_SECRET='<shared secret>' \
+  envsubst '$DCF_CHAT_EDGE_SECRET' \
+  < ops/nginx/dcf-chat-svc.conf.template \
+  | sudo tee /etc/nginx/conf.d/dcf-chat-svc.conf >/dev/null
+
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+`/api/chat/viewers` is limited twice: at NGINX with `chat_api_viewers` (`2r/s`, `burst=20`) and in the Node route middleware with `CHAT_VIEWERS_RATE_PER_SECOND` / `CHAT_VIEWERS_RATE_BURST`. `/api/chat/get_history_all` gets the same two-layer treatment with `chat_api_history_all` (`1r/s`, `burst=10`) and `CHAT_HISTORY_ALL_RATE_PER_SECOND` / `CHAT_HISTORY_ALL_RATE_BURST`. The app logs one sanitized request event per HTTP request plus explicit edge-deny and route-rate-limit events. The request logs intentionally do not include `Authorization`, `internal-key`, `sec-websocket-protocol`, cookies, request bodies, or query strings.
+
+Smoke verification after DNS/WAF cutover:
+
+```
+dig +short chat-api.degencoinflip.com
+curl -I https://chat-api.degencoinflip.com/api/chat/viewers
+curl -I https://chat.degenrpc.com/api/chat/viewers
+curl -I https://chat-api.degencoinflip.com/api/chat/get_history_all
+
+curl -I --resolve chat-api.degencoinflip.com:443:<old-origin-ip> https://chat-api.degencoinflip.com/api/chat/viewers
+curl -I --resolve chat.degenrpc.com:443:<old-origin-ip> https://chat.degenrpc.com/api/chat/viewers
+curl -I --resolve chat-api.degencoinflip.com:443:<old-origin-ip> https://chat-api.degencoinflip.com/api/chat/get_history_all
+```
+
+The direct-origin `--resolve` checks should return deny/timeout/403 instead of normal app data. Do not run a production load test; validate the path-specific limit with local or staging traffic only.
+
+### Legacy NGINX config
+
+The following older config is retained for historical context. Use the protected template above for public production traffic.
 
 Increase worker connections!
 
