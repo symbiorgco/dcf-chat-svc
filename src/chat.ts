@@ -12,6 +12,7 @@ import helpfulDegens from "./helpful_degens.json";
 import { recentChatMessagesForAI } from "./plugins/ai";
 
 export let recentChatMessages = new Map<number, ChatDataMessage[]>();
+const chatMessageAuthorWallets = new Map<string, string>();
 
 export enum CHAT_CHANNEL {
   CRASH = 0,
@@ -49,6 +50,8 @@ const allowedUsers = new NodeCache({
 });
 
 const MAX_CHARS = 150;
+
+const getChatMessageKey = (id: string, channel: number) => `${channel}:${id}`;
 
 export const isAdmin = (walletId: string) => {
   if (admins.includes(walletId)) {
@@ -136,24 +139,49 @@ export const verifyMessage = (
   }
 };
 
-export const addChatMessage = (msg: ChatDataMessage, channel: number = 0) => {
+export const addChatMessage = (
+  msg: ChatDataMessage,
+  channel: number = 0,
+  authorWallet?: string,
+) => {
   const recentMsg = recentChatMessages.get(channel);
   if (!recentMsg) {
     logger.warn(
-      `Channel doesnt exist: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`,
+      `Channel doesnt exist: ${authorWallet ?? msg.wallet} - CH${channel} - ${
+        msg.username
+      }: ${msg.message}`,
     );
     return;
   }
 
   if (recentMsg.length >= MAX_MESSAGES_HISTORY) {
-    recentMsg.shift();
+    const removedMsg = recentMsg.shift();
+    if (removedMsg) {
+      chatMessageAuthorWallets.delete(
+        getChatMessageKey(removedMsg.id, channel),
+      );
+    }
   }
   recentMsg.push(msg);
+  if (authorWallet) {
+    chatMessageAuthorWallets.set(
+      getChatMessageKey(msg.id, channel),
+      authorWallet,
+    );
+  }
   recentChatMessagesForAI.push(msg);
   logger.info(
-    `CHAT: ${msg.wallet} - CH${channel} - ${msg.username}: ${msg.message}`,
+    `CHAT: ${authorWallet ?? msg.wallet} - CH${channel} - ${msg.username}: ${
+      msg.message
+    }`,
   );
 };
+
+export const getChatMessageAuthorWallet = (
+  id: string,
+  channel: number = 0,
+): string | undefined =>
+  chatMessageAuthorWallets.get(getChatMessageKey(id, channel));
 
 export const removeChatMessage = (id: string, channel: number = 0): boolean => {
   const recentMsg = recentChatMessages.get(channel);
@@ -165,6 +193,7 @@ export const removeChatMessage = (id: string, channel: number = 0): boolean => {
   if (indexToRemove != -1) {
     console.log(`Remove msg ${id}`);
     recentMsg.splice(indexToRemove, 1);
+    chatMessageAuthorWallets.delete(getChatMessageKey(id, channel));
     return true;
   } else {
     console.log(`Didnt remove msg ${id}`);

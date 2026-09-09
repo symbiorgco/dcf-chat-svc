@@ -14,6 +14,7 @@ import {
   isMod,
 } from "./chat";
 import { fetchTotalVolume, getLeaderboardEntry } from "./userProfiles";
+import { fetchPersonasProfile } from "./plugins/personas";
 
 const DEALER_API = process.env.DEALER_API as string;
 
@@ -80,6 +81,10 @@ export const verifyJwt = async (
 
             //Ensure walletid is set
             newChatProfile.walletId = walletId;
+            // Explicitly populate privateMode from personas service; the
+            // dealer player-check response does not carry this field.
+            const personasProfile = await fetchPersonasProfile(walletId).catch(() => undefined);
+            newChatProfile.privateMode = personasProfile?.privateMode === true;
             return newChatProfile;
           } else {
             logger.info(`[JWT] user connection failure ${walletId}`);

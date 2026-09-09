@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { askAI } from "./plugins/ai";
 import { fetchPersonasProfile } from "./plugins/personas";
 import { grantRFP, pickPlayersForRFP } from "./plugins/rfp";
+import { toPublicChatProfile } from "./publicChatProfile";
 import {
   CHAT_COLOR,
   ChatDataMessage,
@@ -361,21 +362,22 @@ const handleCommand = async (
 
       /////// TODO make more generic
       currentId++;
+      const publicProfile = toPublicChatProfile(chatProfile);
 
       const broadcastMsg: ChatDataMessage = {
         type: "MSG",
         message: `, ${subCommand}`,
-        username: chatProfile.nickname,
-        wallet: chatProfile.walletId, // TODO hide for normal users?
+        username: publicProfile.nickname,
+        wallet: publicProfile.walletId,
         timestamp: Date.now(),
         color: getColorForRole("MEMBER"),
         role: chatProfile.role,
         id: `${idPrefix}${currentId}`,
         channel: channel,
-        icon: chatProfile.profileImageUrl,
+        icon: publicProfile.profileImageUrl,
       };
 
-      addChatMessage(broadcastMsg, channel);
+      addChatMessage(broadcastMsg, channel, chatProfile.walletId);
       broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
 
       /// END TODO
@@ -544,6 +546,7 @@ const handleSendMessage = async (
           } else {
             // Handle normal message
             currentId++;
+            const publicProfile = toPublicChatProfile(chatProfile);
 
             let color: CHAT_COLOR = getColorForRole("MEMBER");
             if (chatProfile.role === "HELPFUL_DEGEN") {
@@ -573,16 +576,20 @@ const handleSendMessage = async (
             const broadcastMsg: ChatDataMessage = {
               type: "MSG",
               message: verifiedMessage.msg,
-              username: chatProfile.nickname,
-              wallet: chatProfile.walletId, // TODO hide for normal users?
+              username: publicProfile.nickname,
+              wallet: publicProfile.walletId,
               timestamp: Date.now(),
               color: color,
               role: chatProfile.role,
               id: `${idPrefix}${currentId}`,
               channel: message.channel,
-              icon: chatProfile.profileImageUrl,
+              icon: publicProfile.profileImageUrl,
             };
-            addChatMessage(broadcastMsg, message.channel);
+            addChatMessage(
+              broadcastMsg,
+              message.channel,
+              chatProfile.walletId,
+            );
             broadcastMessage(Buffer.from(JSON.stringify(broadcastMsg)));
           }
         }
@@ -736,11 +743,12 @@ const updateViewers = () => {
       }
     }, []);
     playerProfiles = filteredArr.map((profile) => {
+      const publicProfile = toPublicChatProfile(profile);
       return {
-        nickname: profile.nickname,
+        nickname: publicProfile.nickname,
         role: profile.role,
-        profileImageUrl: profile.profileImageUrl,
-        walletId: profile.walletId,
+        profileImageUrl: publicProfile.profileImageUrl,
+        walletId: publicProfile.walletId,
       };
     });
 
