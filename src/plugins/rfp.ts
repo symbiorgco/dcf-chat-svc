@@ -1,5 +1,5 @@
 import axios from "axios";
-import { GameResult } from "../websockets";
+import type { GameResult } from "../websockets";
 import { askAI, recentChatMessagesForAI } from "./ai";
 
 export const grantRFP = async (
@@ -31,7 +31,6 @@ export const grantRFP = async (
     }
     return false;
   } catch (err) {
-    console.log(err);
     console.log(`RFP rain ${solAmount} SOL errored...`);
     return false;
   }

@@ -4,9 +4,10 @@
   "description": "Chat backend",
   "scripts": {
     "start": "npx ts-node src/app.ts",
-    "build": "npx tsc",
+    "build": "rm -rf dist && npx tsc",
     "dev": "npx ts-node src/app.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && npm run test:ci",
+    "test:ci": "NODE_ENV=test node scripts/run-tests.js"
   },
   "author": "",
   "license": "ISC",

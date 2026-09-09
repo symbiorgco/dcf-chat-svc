@@ -51,12 +51,32 @@ export const verifyIfCanChat = async (wallet: string) => {
   return false;
 };
 
+export const getWalletIdFromAuthToken = (
+  authToken?: string
+): string | undefined => {
+  if (!authToken || authToken.length === 0) {
+    return undefined;
+  }
+
+  const decoded = jwt.decode(authToken.replace("Bearer ", ""));
+  if (!decoded || typeof decoded === "string") {
+    return undefined;
+  }
+
+  const walletId = decoded["cognito:username"];
+  return typeof walletId === "string" && walletId.length > 0
+    ? walletId
+    : undefined;
+};
+
 export const verifyJwt = async (
-  authToken: string
+  authToken?: string
 ): Promise<ChatProfile | undefined> => {
   try {
-    const decoded = jwt.decode(authToken.replace("Bearer ", ""));
-    const walletId = decoded["cognito:username"] as string;
+    const walletId = getWalletIdFromAuthToken(authToken);
+    if (!walletId) {
+      return undefined;
+    }
 
     const fromCache = authenticatedCache.get(authToken) as ChatProfile;
     if (fromCache) {
