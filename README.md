@@ -157,6 +157,12 @@ sysctl -w net.core.wmem_max=16384
 
 ### Axiom filter
 
+### Axiom logging configuration
+
+The logger writes local pretty logs by default. Axiom forwarding is enabled only
+when `AXIOM_ORG_ID`, `AXIOM_TOKEN`, and `AXIOM_DATASET` are all configured in the
+runtime environment or secret manager. Leave them unset for local and test runs.
+
 ```
 declare query_parameters (wallet_filter:string = "");
 dcf_crash
